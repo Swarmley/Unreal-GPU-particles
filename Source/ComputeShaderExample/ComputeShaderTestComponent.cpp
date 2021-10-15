@@ -3,24 +3,13 @@
 
 #include "ComputeShaderTestComponent.h"
 
-#if ENGINE_MINOR_VERSION < 26
-
-#include "ShaderParameterUtils.h"
-
-#else
 
 #include "ShaderCompilerCore.h"
 
-#endif
-
 #include "RHIStaticStates.h"
 
-// Some useful links
-// -----------------
-// [Enqueue render commands using lambdas](https://github.com/EpicGames/UnrealEngine/commit/41f6b93892dcf626a5acc155f7d71c756a5624b0)
-//
 
-
+#define NUM_THREADS_PER_GROUP_DIMENSION 256
 
 // Sets default values for this component's properties
 UComputeShaderTestComponent::UComputeShaderTestComponent() 
@@ -41,43 +30,42 @@ void UComputeShaderTestComponent::BeginPlay()
     FRHICommandListImmediate& RHICommands = GRHICommandList.GetImmediateCommandList();
 
 	FRandomStream rng;
-	int k = 0;
-	int rows = 256;
-	int cols = 256;
-	numBoids = cols * rows;
-
 	{
-		TResourceArray<Particle> particleResourceArray;
+		TResourceArray<Particle> particleResourceArray_read;
+		TResourceArray<Particle> particleResourceArray_write;
+
+
 		{
 			Particle p;
 			p.position = FVector::ZeroVector;
 			p.time = 0.0f;
-			particleResourceArray.Init(p, numBoids);
+			p.fce = FVector::ZeroVector;
+			particleResourceArray_read.Init(p, numBoids);
+			particleResourceArray_write.Init(p, numBoids);
 		}
 
-		//float time = rng.GetFraction();
-		//for (int32 i = 0; i < rows; i++) {
-		//	float time = rng.GetFraction();
-		//	
-		//	for (int32 j = 0; j < cols; j++) {
-		//		time += 0.16f;
-		//		particleResourceArray[k].position = FVector(i*10, j*10, 0);
-		//		particleResourceArray[k].time = time;
-		//		k++;
-		//	}
-		//}
-
-		for (Particle& p : particleResourceArray)
+		for (Particle& p : particleResourceArray_read)
 		{
 			p.position = rng.GetUnitVector() * rng.GetFraction() * spawnRadius;
 			p.time = rng.GetFraction();
 		}
+		particleResourceArray_write = particleResourceArray_read;
 
-		FRHIResourceCreateInfo createInfo;
-		createInfo.ResourceArray = &particleResourceArray;
+		FRHIResourceCreateInfo createInfo_read;
+		createInfo_read.ResourceArray = &particleResourceArray_read;
+		FRHIResourceCreateInfo createInfo_write;
+		createInfo_write.ResourceArray = &particleResourceArray_write;
 
-		_particleBuffer = RHICreateStructuredBuffer(sizeof(Particle), sizeof(Particle) * numBoids, BUF_UnorderedAccess | BUF_ShaderResource, createInfo);
-		_particleBufferUAV = RHICreateUnorderedAccessView(_particleBuffer, false, false);
+
+
+		buffers[Read].Buffer = RHICreateStructuredBuffer(sizeof(Particle), sizeof(Particle) * numBoids, BUF_UnorderedAccess | BUF_ShaderResource, createInfo_read);
+		buffers[Read].BufferUAV = RHICreateUnorderedAccessView(buffers[Read].Buffer, false, false);
+
+		buffers[Write].Buffer = RHICreateStructuredBuffer(sizeof(Particle), sizeof(Particle) * numBoids, BUF_UnorderedAccess | BUF_ShaderResource, createInfo_write);
+		buffers[Write].BufferUAV = RHICreateUnorderedAccessView(buffers[Write].Buffer, false, false);
+
+		//_particleBuffer = RHICreateStructuredBuffer(sizeof(Particle), sizeof(Particle) * numBoids, BUF_UnorderedAccess | BUF_ShaderResource, createInfo);
+		//_particleBufferUAV = RHICreateUnorderedAccessView(_particleBuffer, false, false);
 	}
 
 	if (outputParticles.Num() != numBoids)
@@ -86,6 +74,7 @@ void UComputeShaderTestComponent::BeginPlay()
 		Particle p;
 		p.position = FVector::ZeroVector;
 		p.time = 0.0f;
+		p.fce = FVector::ZeroVector;
 		outputParticles.Init(p, numBoids);
 	}
 }
@@ -94,35 +83,53 @@ void UComputeShaderTestComponent::BeginPlay()
 void UComputeShaderTestComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-
+	
 	ENQUEUE_RENDER_COMMAND(FComputeShaderRunner)(
 	[&](FRHICommandListImmediate& RHICommands)
 	{
-		TShaderMapRef<FComputeShaderDeclaration> cs(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
-		FRHIComputeShader* rhiComputeShader = cs.GetComputeShader();
-
-		RHICommands.SetUAVParameter(rhiComputeShader, cs->particles.GetBaseIndex(), _particleBufferUAV);
-
-		RHICommands.SetComputeShader(rhiComputeShader);
-		DispatchComputeShader(RHICommands, cs, 256, 1, 1);
-
-		// read back the data
-		uint8 * particledata = (uint8*)RHILockStructuredBuffer(_particleBuffer, 0, numBoids * sizeof(Particle), RLM_ReadOnly);	
+		
+		uint8* particledata = (uint8*)RHILockStructuredBuffer(buffers[Read].Buffer, 0, numBoids * sizeof(Particle), RLM_ReadOnly);
 		FMemory::Memcpy(outputParticles.GetData(), particledata, numBoids * sizeof(Particle));
+		RHIUnlockStructuredBuffer(buffers[Read].Buffer);
+		
+		RHICommands.TransitionResource(EResourceTransitionAccess::ERWBarrier, EResourceTransitionPipeline::EGfxToCompute, buffers[Write].BufferUAV);
+		TShaderMapRef<FComputeShaderDeclaration> cs(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
 
-		RHIUnlockStructuredBuffer(_particleBuffer);
-	});
+		FRHIComputeShader* rhiComputeShader = cs.GetComputeShader();
+		
+		int i = cs->global.GetBaseIndex();
+
+		RHICommands.SetUAVParameter(rhiComputeShader, cs->particles_write.GetBaseIndex(), buffers[Write].BufferUAV);
+		RHICommands.SetUAVParameter(rhiComputeShader, cs->particles_read.GetBaseIndex(), buffers[Read].BufferUAV);
+		RHICommands.SetComputeShader(rhiComputeShader);
+		
+		DispatchComputeShader(RHICommands, cs, FMath::DivideAndRoundUp(numBoids, NUM_THREADS_PER_GROUP_DIMENSION), 1, 1);
+		std::swap(buffers[Read], buffers[Write]);
+		// read back the data
+
+	}); 
+	
+	
 }
 
 FComputeShaderDeclaration::FComputeShaderDeclaration(const ShaderMetaType::CompiledShaderInitializerType& Initializer) : FGlobalShader(Initializer)
 {
-	particles.Bind(Initializer.ParameterMap, TEXT("particles"));
+	particles_read.Bind(Initializer.ParameterMap, TEXT("particles_read"));
+	particles_write.Bind(Initializer.ParameterMap, TEXT("particles_write"));
+	global.Bind(Initializer.ParameterMap, TEXT("Global"));
+
+
 }
 
 void FComputeShaderDeclaration::ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
 {
 	FGlobalShader::ModifyCompilationEnvironment(Parameters, OutEnvironment);
 	OutEnvironment.CompilerFlags.Add(CFLAG_StandardOptimization);
+	OutEnvironment.SetDefine(TEXT("THREADGROUPSIZE_X"), NUM_THREADS_PER_GROUP_DIMENSION);
+	OutEnvironment.SetDefine(TEXT("THREADGROUPSIZE_Y"), 1);
+	OutEnvironment.SetDefine(TEXT("THREADGROUPSIZE_Z"), 1);
+
+
 }
 
 IMPLEMENT_SHADER_TYPE(, FComputeShaderDeclaration, TEXT("/ComputeShaderPlugin/Boid.usf"), TEXT("MainComputeShader"), SF_Compute);

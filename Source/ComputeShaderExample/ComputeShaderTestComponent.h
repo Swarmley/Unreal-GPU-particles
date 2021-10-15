@@ -24,12 +24,18 @@
 
 struct Particle {
 	FVector position;
+	FVector fce;
 	float	time;
+
 };
+
+
+
 
 class FComputeShaderDeclaration : public FGlobalShader
 {
 	DECLARE_SHADER_TYPE(FComputeShaderDeclaration, Global);
+
 
 	FComputeShaderDeclaration() {}
 
@@ -42,7 +48,11 @@ class FComputeShaderDeclaration : public FGlobalShader
 	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment);
 
 public:
-	LAYOUT_FIELD(FShaderResourceParameter, particles);
+	LAYOUT_FIELD(FShaderResourceParameter, particles_read);
+	LAYOUT_FIELD(FShaderResourceParameter, particles_write);
+	LAYOUT_FIELD(FShaderUniformBufferParameter, global);
+	
+	
 };
 
 
@@ -77,6 +87,19 @@ public:
 	//UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	TArray<Particle> outputParticles;
 protected:
-	FStructuredBufferRHIRef _particleBuffer;
-	FUnorderedAccessViewRHIRef _particleBufferUAV;
+	enum {
+		Read = 0,
+		Write = 1
+	};
+	struct GPUBuffer {
+		FStructuredBufferRHIRef Buffer;
+		FUnorderedAccessViewRHIRef BufferUAV;
+		
+		FComputeFenceRHIRef Fence;
+		
+	};
+	GPUBuffer buffers[2];
+
+	//FStructuredBufferRHIRef _particleBuffer;
+	//FUnorderedAccessViewRHIRef _particleBufferUAV;
 };
