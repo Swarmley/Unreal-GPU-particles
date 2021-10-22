@@ -8,6 +8,8 @@
 #include "GlobalShader.h"
 #include "UniformBuffer.h"
 #include "RHICommandList.h"
+#include "ShaderParameterStruct.h"
+#include "RenderGraphUtils.h"
 
 #include <atomic>
 
@@ -34,12 +36,31 @@ struct Particle {
 
 class FComputeShaderDeclaration : public FGlobalShader
 {
-	DECLARE_SHADER_TYPE(FComputeShaderDeclaration, Global);
+public:
+	//Declare this class as a global shader
+	DECLARE_GLOBAL_SHADER(FComputeShaderDeclaration);
+	//Tells the engine that this shader uses a structure for its parameters
+	SHADER_USE_PARAMETER_STRUCT(FComputeShaderDeclaration, FGlobalShader);
+	/// <summary>
+	/// DECLARATION OF THE PARAMETER STRUCTURE
+	/// The parameters must match the parameters in the HLSL code
+	/// For each parameter, provide the C++ type, and the name (Same name used in HLSL code)
+	/// </summary>
+	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
+		SHADER_PARAMETER_UAV(RWTexture2D<Particle>, particles_read)
+		SHADER_PARAMETER_UAV(RWTexture2D<Particle>, particles_write)
+		SHADER_PARAMETER(float, delta_time)
+		SHADER_PARAMETER(float, mass)
+		SHADER_PARAMETER(float, gravity)
+	END_SHADER_PARAMETER_STRUCT()
 
 
-	FComputeShaderDeclaration() {}
+	//DECLARE_SHADER_TYPE(FComputeShaderDeclaration, Global);
 
-	explicit FComputeShaderDeclaration(const ShaderMetaType::CompiledShaderInitializerType& Initializer);
+
+	//FComputeShaderDeclaration() {}
+
+	//explicit FComputeShaderDeclaration(const ShaderMetaType::CompiledShaderInitializerType& Initializer);
 
 	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) {
 		return GetMaxSupportedFeatureLevel(Parameters.Platform) >= ERHIFeatureLevel::SM5;
@@ -48,9 +69,9 @@ class FComputeShaderDeclaration : public FGlobalShader
 	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment);
 
 public:
-	LAYOUT_FIELD(FShaderResourceParameter, particles_read);
-	LAYOUT_FIELD(FShaderResourceParameter, particles_write);
-	LAYOUT_FIELD(FShaderUniformBufferParameter, global);
+	//LAYOUT_FIELD(FShaderResourceParameter, particles_read);
+	//LAYOUT_FIELD(FShaderResourceParameter, particles_write);
+	//LAYOUT_FIELD(FShaderUniformBufferParameter, global);
 	
 	
 };
@@ -84,6 +105,12 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float spawnRadius = 600.0f;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float mass = 100.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float gravity = 9.81f;
+
 	//UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	TArray<Particle> outputParticles;
 protected:
@@ -94,8 +121,6 @@ protected:
 	struct GPUBuffer {
 		FStructuredBufferRHIRef Buffer;
 		FUnorderedAccessViewRHIRef BufferUAV;
-		
-		FComputeFenceRHIRef Fence;
 		
 	};
 	GPUBuffer buffers[2];

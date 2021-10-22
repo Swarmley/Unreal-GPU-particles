@@ -12,12 +12,12 @@ struct Particle{
 //--------------------------------------------------------------------------------------
 // Buffers
 //--------------------------------------------------------------------------------------
+
 RWStructuredBuffer<Particle> particles_read;
 RWStructuredBuffer<Particle> particles_write;
-cbuffer Global{
-    float deltaTime;
-};
-
+float delta_time;
+float mass;
+float gravity;
 
 
 float hash12(float2 p)
@@ -26,6 +26,13 @@ float hash12(float2 p)
     p3 += dot(p3, p3.yzx + 33.33);
     return frac((p3.x + p3.y) * p3.z);
 }
+float ComputeAcceleration(float force, float mass){
+    return force / mass;
+}
+float ComputeGravitationalForce(float mass){
+    return mass * gravity;
+}
+
 float ComputeForce(float r)
 {	
     float eps = 1.7f;
@@ -35,6 +42,10 @@ float ComputeForce(float r)
 	float U = 4 * eps * ((pow(6 * sig, 6) / pow(r, 7)) - (pow(12 * sig, 12) / pow(r, 13)));
 
 	return U;
+}
+
+void addForce(inout float3 velocity, float3 force){
+    velocity += (force / mass) * delta_time; 
 }
 
 [numthreads(THREADGROUPSIZE_X, THREADGROUPSIZE_Y, THREADGROUPSIZE_Z)]
@@ -50,20 +61,24 @@ void MainComputeShader(uint3 ThreadId : SV_DispatchThreadID)
     float time = particles_read[numStructs - index].time;
 	//position.z += sin(time);
 
-    
     float force = 0.0f;
     float3 fce = float3(0.0f,0.0f,0.0f);
 
-
-    for(int i = 0; i < numStructs; i++){
-        if(i == index) continue;
-        float3 loc = particles_read[i].position;
-        float3 res = loc - position;
-        float u = ComputeForce(length(res));
-        fce += normalize(res);
-        force+= u;
-    }
-    particles_write[index].fce = force * deltaTime;
-    particles_write[index].time +=  0.016f ;
-    particles_write[index].position = position;
+    float3 G = float3(0.0f,0.0f,-1.0f) * ComputeGravitationalForce(mass);
+    fce += G;
+    
+    //for(int i = 0; i < numStructs; i++){
+    //    if(i == index) continue;
+    //    float3 loc = particles_read[i].position;
+    //    float3 res = loc - position;
+    //    float u = ComputeForce(length(res));
+    //    fce += delta_time * ComputeAcceleration(u, mass) * normalize(res);
+    //    force+= u;
+    //}   
+    
+    float3 r = (fce * pow(delta_time, 2)) / mass;
+    
+    particles_write[index].fce = r;
+    particles_write[index].time += delta_time;
+    particles_write[index].position += r;
 }

@@ -2,12 +2,8 @@
 
 
 #include "ComputeShaderTestComponent.h"
-
-
 #include "ShaderCompilerCore.h"
-
 #include "RHIStaticStates.h"
-
 
 #define NUM_THREADS_PER_GROUP_DIMENSION 256
 
@@ -84,26 +80,33 @@ void UComputeShaderTestComponent::TickComponent(float DeltaTime, ELevelTick Tick
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 	
+	
+
 	ENQUEUE_RENDER_COMMAND(FComputeShaderRunner)(
-	[&](FRHICommandListImmediate& RHICommands)
+	[&](FRHICommandList& RHICommands)
 	{
-		
 		uint8* particledata = (uint8*)RHILockStructuredBuffer(buffers[Read].Buffer, 0, numBoids * sizeof(Particle), RLM_ReadOnly);
 		FMemory::Memcpy(outputParticles.GetData(), particledata, numBoids * sizeof(Particle));
 		RHIUnlockStructuredBuffer(buffers[Read].Buffer);
-		
-		RHICommands.TransitionResource(EResourceTransitionAccess::ERWBarrier, EResourceTransitionPipeline::EGfxToCompute, buffers[Write].BufferUAV);
+
+		RHICommands.TransitionResource(EResourceTransitionAccess::ERWBarrier, EResourceTransitionPipeline::EComputeToCompute, buffers[Write].BufferUAV);
 		TShaderMapRef<FComputeShaderDeclaration> cs(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
 
 		FRHIComputeShader* rhiComputeShader = cs.GetComputeShader();
 		
-		int i = cs->global.GetBaseIndex();
-
-		RHICommands.SetUAVParameter(rhiComputeShader, cs->particles_write.GetBaseIndex(), buffers[Write].BufferUAV);
-		RHICommands.SetUAVParameter(rhiComputeShader, cs->particles_read.GetBaseIndex(), buffers[Read].BufferUAV);
-		RHICommands.SetComputeShader(rhiComputeShader);
 		
-		DispatchComputeShader(RHICommands, cs, FMath::DivideAndRoundUp(numBoids, NUM_THREADS_PER_GROUP_DIMENSION), 1, 1);
+		FComputeShaderDeclaration::FParameters params;
+		params.delta_time = DeltaTime;
+		params.particles_read = buffers[Read].BufferUAV;
+		params.particles_write = buffers[Write].BufferUAV;
+		params.mass = mass;
+		params.gravity = gravity;
+
+		//RHICommands.SetUAVParameter(rhiComputeShader, cs->particles_write.GetBaseIndex(), buffers[Write].BufferUAV);
+		//RHICommands.SetUAVParameter(rhiComputeShader, cs->particles_read.GetBaseIndex(), buffers[Read].BufferUAV);
+		RHICommands.SetComputeShader(rhiComputeShader);
+		FComputeShaderUtils::Dispatch(RHICommands, cs, params, FIntVector(FMath::DivideAndRoundUp(numBoids, NUM_THREADS_PER_GROUP_DIMENSION), 1, 1));
+		//DispatchComputeShader(RHICommands, cs, FMath::DivideAndRoundUp(numBoids, NUM_THREADS_PER_GROUP_DIMENSION), 1, 1);
 		std::swap(buffers[Read], buffers[Write]);
 		// read back the data
 
@@ -112,14 +115,11 @@ void UComputeShaderTestComponent::TickComponent(float DeltaTime, ELevelTick Tick
 	
 }
 
-FComputeShaderDeclaration::FComputeShaderDeclaration(const ShaderMetaType::CompiledShaderInitializerType& Initializer) : FGlobalShader(Initializer)
-{
-	particles_read.Bind(Initializer.ParameterMap, TEXT("particles_read"));
-	particles_write.Bind(Initializer.ParameterMap, TEXT("particles_write"));
-	global.Bind(Initializer.ParameterMap, TEXT("Global"));
-
-
-}
+//FComputeShaderDeclaration::FComputeShaderDeclaration(const ShaderMetaType::CompiledShaderInitializerType& Initializer) : FGlobalShader(Initializer)
+//{
+//	//particles_read.Bind(Initializer.ParameterMap, TEXT("particles_read"));
+//	//particles_write.Bind(Initializer.ParameterMap, TEXT("particles_write"));
+//}
 
 void FComputeShaderDeclaration::ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
 {
