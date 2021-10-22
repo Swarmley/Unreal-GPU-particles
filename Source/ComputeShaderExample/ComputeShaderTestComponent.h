@@ -26,9 +26,8 @@
 
 struct Particle {
 	FVector position;
-	FVector fce;
+	FVector velocity;
 	float	time;
-
 };
 
 
@@ -52,6 +51,9 @@ public:
 		SHADER_PARAMETER(float, delta_time)
 		SHADER_PARAMETER(float, mass)
 		SHADER_PARAMETER(float, gravity)
+		SHADER_PARAMETER(float, eps)
+		SHADER_PARAMETER(float, sig)
+		SHADER_PARAMETER(int, numParticles)
 	END_SHADER_PARAMETER_STRUCT()
 
 
@@ -106,10 +108,14 @@ public:
 	float spawnRadius = 600.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	float mass = 100.0f;
-
+	float mass = 1.0f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	float gravity = 9.81f;
+		float eps = 17.7f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+		float sig = 41.f;
+
+	//UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float gravity = 6.67e-11;
 
 	//UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	TArray<Particle> outputParticles;

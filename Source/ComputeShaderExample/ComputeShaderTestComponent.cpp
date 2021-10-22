@@ -35,7 +35,7 @@ void UComputeShaderTestComponent::BeginPlay()
 			Particle p;
 			p.position = FVector::ZeroVector;
 			p.time = 0.0f;
-			p.fce = FVector::ZeroVector;
+			p.velocity = FVector::ZeroVector;
 			particleResourceArray_read.Init(p, numBoids);
 			particleResourceArray_write.Init(p, numBoids);
 		}
@@ -70,7 +70,7 @@ void UComputeShaderTestComponent::BeginPlay()
 		Particle p;
 		p.position = FVector::ZeroVector;
 		p.time = 0.0f;
-		p.fce = FVector::ZeroVector;
+		p.velocity = FVector::ZeroVector;
 		outputParticles.Init(p, numBoids);
 	}
 }
@@ -85,10 +85,10 @@ void UComputeShaderTestComponent::TickComponent(float DeltaTime, ELevelTick Tick
 	ENQUEUE_RENDER_COMMAND(FComputeShaderRunner)(
 	[&](FRHICommandList& RHICommands)
 	{
-		uint8* particledata = (uint8*)RHILockStructuredBuffer(buffers[Read].Buffer, 0, numBoids * sizeof(Particle), RLM_ReadOnly);
-		FMemory::Memcpy(outputParticles.GetData(), particledata, numBoids * sizeof(Particle));
-		RHIUnlockStructuredBuffer(buffers[Read].Buffer);
 
+			uint8* particledata = (uint8*)RHILockStructuredBuffer(buffers[Write].Buffer, 0, numBoids * sizeof(Particle), RLM_ReadOnly);
+			FMemory::Memcpy(outputParticles.GetData(), particledata, numBoids * sizeof(Particle));
+			RHIUnlockStructuredBuffer(buffers[Write].Buffer);
 		RHICommands.TransitionResource(EResourceTransitionAccess::ERWBarrier, EResourceTransitionPipeline::EComputeToCompute, buffers[Write].BufferUAV);
 		TShaderMapRef<FComputeShaderDeclaration> cs(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
 
@@ -101,7 +101,9 @@ void UComputeShaderTestComponent::TickComponent(float DeltaTime, ELevelTick Tick
 		params.particles_write = buffers[Write].BufferUAV;
 		params.mass = mass;
 		params.gravity = gravity;
-
+		params.eps = eps;
+		params.sig = sig;
+		params.numParticles = numBoids;
 		//RHICommands.SetUAVParameter(rhiComputeShader, cs->particles_write.GetBaseIndex(), buffers[Write].BufferUAV);
 		//RHICommands.SetUAVParameter(rhiComputeShader, cs->particles_read.GetBaseIndex(), buffers[Read].BufferUAV);
 		RHICommands.SetComputeShader(rhiComputeShader);
