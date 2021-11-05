@@ -94,6 +94,8 @@ protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
 
+	int numBoids = 1000;
+
 public:
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
@@ -101,8 +103,16 @@ public:
 
 
 public:
+	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	int numBoids = 1000;
+		int width = 32;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+		int height = 32;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+		int depth = 32;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+		float step = 100;
+
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float spawnRadius = 600.0f;

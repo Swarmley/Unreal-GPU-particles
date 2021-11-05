@@ -54,7 +54,7 @@ void MainComputeShader(uint3 ThreadId : SV_DispatchThreadID)
     float time = particles_read[index].time;
     float3 velocity = particles_read[index].velocity;
 
-	float3 new_velocity = velocity;
+	float3 new_velocity = velocity; 
     //position.z += sin(time);
     
     float3 G = float3(0.0f,0.0f,-1.0f) * ComputeGravitationalForce(mass);

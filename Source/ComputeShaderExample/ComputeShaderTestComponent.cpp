@@ -29,8 +29,8 @@ void UComputeShaderTestComponent::BeginPlay()
 	{
 		TResourceArray<Particle> particleResourceArray_read;
 		TResourceArray<Particle> particleResourceArray_write;
-
-
+		numBoids = width * height * depth;
+		
 		{
 			Particle p;
 			p.position = FVector::ZeroVector;
@@ -40,12 +40,28 @@ void UComputeShaderTestComponent::BeginPlay()
 			particleResourceArray_write.Init(p, numBoids);
 		}
 
-		for (Particle& p : particleResourceArray_read)
-		{
-			p.position = rng.GetUnitVector() * rng.GetFraction() * spawnRadius;
-			p.time = rng.GetFraction();
+		FVector position = FVector::ZeroVector;
+		for (int z = 0; z < depth; z++) {
+			position.Y = 0;
+			for (int y = 0; y < height; y++) {
+				position.X = 0;
+				for (int x = 0; x < width; x++) {
+					int idx = z * width * height + y * width + x;
+					particleResourceArray_read[idx].position = position;
+					particleResourceArray_read[idx].time = rng.GetFraction();
+					position.X += step;
+				}
+				position.Y += step;
+			}
+			position.Z += step;
 		}
-		particleResourceArray_write = particleResourceArray_read;
+
+		//for (Particle& p : particleResourceArray_read)
+		//{
+		//	p.position = rng.GetUnitVector() * rng.GetFraction() * spawnRadius;
+		//	p.time = rng.GetFraction();
+		//}
+		//particleResourceArray_write = particleResourceArray_read;
 
 		FRHIResourceCreateInfo createInfo_read;
 		createInfo_read.ResourceArray = &particleResourceArray_read;
