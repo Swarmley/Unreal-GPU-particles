@@ -23,11 +23,16 @@ protected:
 public:	
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+public:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+		float renderScale = 1.0f;
 
 protected:
 	void _initISMC();
 	void _updateInstanceTransforms();
 
 protected:
+	UMaterial* Mat;
+	UMaterialInstanceDynamic* Material;
 	TArray<FTransform> _instanceTransforms;
 };

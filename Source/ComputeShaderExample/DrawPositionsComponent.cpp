@@ -4,14 +4,13 @@
 #include "DrawPositionsComponent.h"
 
 #include "ComputeShaderTestComponent.h"
-
+#include "DrawBoundaryComponent.h"
 // Sets default values for this component's properties
 UDrawPositionsComponent::UDrawPositionsComponent()
 {
 	// Set this component to be initialized when the game starts, and to be ticked every frame.  You can turn these features
 	// off to improve performance if you don't need them.
 	PrimaryComponentTick.bCanEverTick = true;
-
 	// ...
 }
 
@@ -20,7 +19,6 @@ UDrawPositionsComponent::UDrawPositionsComponent()
 void UDrawPositionsComponent::BeginPlay()
 {
 	Super::BeginPlay();
-
 	_initISMC();
 }
 
@@ -58,8 +56,7 @@ void UDrawPositionsComponent::_updateInstanceTransforms()
 	if (!boidsComponent) return;
 
 	TArray<Particle>& particles = boidsComponent->outputParticles;
-
-
+	
 	// resize up/down the ismc
 	int toAdd = FMath::Max(0, particles.Num() - ismc->GetInstanceCount());
 	int toRemove = FMath::Max(0, ismc->GetInstanceCount() - particles.Num());
@@ -76,7 +73,7 @@ void UDrawPositionsComponent::_updateInstanceTransforms()
 	{
 		FTransform& transform = _instanceTransforms[i];
 		transform.SetTranslation(particles[i].position);
-		transform.SetScale3D(FVector(0.05f));
+		transform.SetScale3D(FVector(renderScale));
 		transform.SetRotation(FQuat::Identity);
 	}
 
