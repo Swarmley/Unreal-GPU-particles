@@ -48,20 +48,23 @@ public:
 	/// For each parameter, provide the C++ type, and the name (Same name used in HLSL code)
 	/// </summary>
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
-		SHADER_PARAMETER_UAV(RWTexture2D<Particle>, particles_read)
-		SHADER_PARAMETER_UAV(RWTexture2D<Particle>, particles_write)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<Particle>, particles_read)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<Particle>, particles_write)
 
-		SHADER_PARAMETER_UAV(RWTexture2D<ParticleForce>, particlesForce_read)
-		SHADER_PARAMETER_UAV(RWTexture2D<ParticleForce>, particlesForce_write)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<ParticleForce>, particlesForce_read)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<ParticleForce>, particlesForce_write)
 
-		SHADER_PARAMETER_UAV(RWTexture2D<ParticleDensity>, particlesDensity_read)
-		SHADER_PARAMETER_UAV(RWTexture2D<ParticleDensity>, particlesDensity_write)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<ParticleDensity>, particlesDensity_read)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<ParticleDensity>, particlesDensity_write)
+
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<float3>, cvf_max)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<float>, dt_read)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<float>, dt_write)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<uint32>, mutex)
 
 		SHADER_PARAMETER(float, delta_time)
 		SHADER_PARAMETER(float, mass)
-		SHADER_PARAMETER(float, gravity)
-		SHADER_PARAMETER(float, eps)
-		SHADER_PARAMETER(float, sig)
+		SHADER_PARAMETER(FVector, gravity)
 		SHADER_PARAMETER(int, numParticles)
 		SHADER_PARAMETER(FVector, minBoundary)
 		SHADER_PARAMETER(FVector, maxBoundary)
@@ -97,20 +100,23 @@ public:
 	/// For each parameter, provide the C++ type, and the name (Same name used in HLSL code)
 	/// </summary>
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
-		SHADER_PARAMETER_UAV(RWTexture2D<Particle>, particles_read)
-		SHADER_PARAMETER_UAV(RWTexture2D<Particle>, particles_write)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<Particle>, particles_read)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<Particle>, particles_write)
 
-		SHADER_PARAMETER_UAV(RWTexture2D<ParticleForce>, particlesForce_read)
-		SHADER_PARAMETER_UAV(RWTexture2D<ParticleForce>, particlesForce_write)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<ParticleForce>, particlesForce_read)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<ParticleForce>, particlesForce_write)
 
-		SHADER_PARAMETER_UAV(RWTexture2D<ParticleDensity>, particlesDensity_read)
-		SHADER_PARAMETER_UAV(RWTexture2D<ParticleDensity>, particlesDensity_write)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<ParticleDensity>, particlesDensity_read)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<ParticleDensity>, particlesDensity_write)
+
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<FVector>, cvf_max)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<float>, dt_read)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<float>, dt_write)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<uint32>, mutex)
 
 		SHADER_PARAMETER(float, delta_time)
 		SHADER_PARAMETER(float, mass)
-		SHADER_PARAMETER(float, gravity)
-		SHADER_PARAMETER(float, eps)
-		SHADER_PARAMETER(float, sig)
+		SHADER_PARAMETER(FVector, gravity)
 		SHADER_PARAMETER(int, numParticles)
 		SHADER_PARAMETER(FVector, minBoundary)
 		SHADER_PARAMETER(FVector, maxBoundary)
@@ -146,20 +152,24 @@ public:
 	/// For each parameter, provide the C++ type, and the name (Same name used in HLSL code)
 	/// </summary>
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
-		SHADER_PARAMETER_UAV(RWTexture2D<Particle>, particles_read)
-		SHADER_PARAMETER_UAV(RWTexture2D<Particle>, particles_write)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<Particle>, particles_read)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<Particle>, particles_write)
 
-		SHADER_PARAMETER_UAV(RWTexture2D<ParticleForce>, particlesForce_read)
-		SHADER_PARAMETER_UAV(RWTexture2D<ParticleForce>, particlesForce_write)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<ParticleForce>, particlesForce_read)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<ParticleForce>, particlesForce_write)
 
-		SHADER_PARAMETER_UAV(RWTexture2D<ParticleDensity>, particlesDensity_read)
-		SHADER_PARAMETER_UAV(RWTexture2D<ParticleDensity>, particlesDensity_write)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<ParticleDensity>, particlesDensity_read)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<ParticleDensity>, particlesDensity_write)
+
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<FVector>, cvf_max)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<float>, dt_read)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<float>, dt_write)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<uint32>, mutex)
+
 
 		SHADER_PARAMETER(float, delta_time)
 		SHADER_PARAMETER(float, mass)
-		SHADER_PARAMETER(float, gravity)
-		SHADER_PARAMETER(float, eps)
-		SHADER_PARAMETER(float, sig)
+		SHADER_PARAMETER(FVector, gravity)
 		SHADER_PARAMETER(int, numParticles)
 		SHADER_PARAMETER(FVector, minBoundary)
 		SHADER_PARAMETER(FVector, maxBoundary)
@@ -181,8 +191,59 @@ public:
 
 public:
 };
+class FComputeDtDeclaration : public FGlobalShader
+{
+public:
+	//Declare this class as a global shader
+	DECLARE_GLOBAL_SHADER(FComputeDtDeclaration);
+	//Tells the engine that this shader uses a structure for its parameters
+	SHADER_USE_PARAMETER_STRUCT(FComputeDtDeclaration, FGlobalShader);
+	/// <summary>
+	/// DECLARATION OF THE PARAMETER STRUCTURE
+	/// The parameters must match the parameters in the HLSL code
+	/// For each parameter, provide the C++ type, and the name (Same name used in HLSL code)
+	/// </summary>
+	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<Particle>, particles_read)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<Particle>, particles_write)
+
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<ParticleForce>, particlesForce_read)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<ParticleForce>, particlesForce_write)
+
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<ParticleDensity>, particlesDensity_read)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<ParticleDensity>, particlesDensity_write)
+
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<FVector>, cvf_max)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<float>, dt_read)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<float>, dt_write)
+
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<uint32>, mutex)
 
 
+		SHADER_PARAMETER(float, delta_time)
+		SHADER_PARAMETER(float, mass)
+		SHADER_PARAMETER(FVector, gravity)
+		SHADER_PARAMETER(int, numParticles)
+		SHADER_PARAMETER(FVector, minBoundary)
+		SHADER_PARAMETER(FVector, maxBoundary)
+		SHADER_PARAMETER(float, damping)
+		SHADER_PARAMETER(float, epsilon)
+		SHADER_PARAMETER(float, radious)
+		SHADER_PARAMETER(float, poly6Kernel)
+		SHADER_PARAMETER(float, spikyKernel)
+		SHADER_PARAMETER(float, lapKernel)
+		SHADER_PARAMETER(float, pressureCoef)
+		SHADER_PARAMETER(float, restDensity)
+		SHADER_PARAMETER(float, viscosity)
+		END_SHADER_PARAMETER_STRUCT()
+	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) {
+		return GetMaxSupportedFeatureLevel(Parameters.Platform) >= ERHIFeatureLevel::SM5;
+	};
+
+	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment);
+
+public:
+};
 
 
 
@@ -191,7 +252,7 @@ class COMPUTESHADEREXAMPLE_API UComputeShaderTestComponent : public UActorCompon
 {
 	GENERATED_BODY()
 
-
+		
 public:
 	// Sets default values for this component's properties
 	UComputeShaderTestComponent();
@@ -230,12 +291,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float mass = 0.0002;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		float eps = 17.7f;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		float sig = 41.f;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	float gravity = -9.81f;
+		FVector gravity = { 0.f, 0.f, -9.81f };
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float damping = -0.37f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
@@ -267,6 +323,11 @@ protected:
 	GPUBuffer buffers[2];
 	GPUBuffer force_buffers[2];
 	GPUBuffer density_buffers[2];
+	GPUBuffer dt_buffers[2];
+	
+	GPUBuffer cvf_buffer;
+	GPUBuffer mutex_buffer;
+
 
 	//FStructuredBufferRHIRef _particleBuffer;
 	//FUnorderedAccessViewRHIRef _particleBufferUAV;

@@ -26,12 +26,17 @@ RWStructuredBuffer<ParticleForce> particlesForce_write;
 RWStructuredBuffer<ParticleDensity> particlesDensity_read;
 RWStructuredBuffer<ParticleDensity> particlesDensity_write;
 
+RWStructuredBuffer<float3> cvf_max;
+
+
+
+RWStructuredBuffer<float> dt_read;
+RWStructuredBuffer<float> dt_write;
+RWStructuredBuffer<uint> mutex;
+
 float delta_time;
 float mass;
-float gravity;
-float eps = 1.7f;
-float sig = 1.f;
-
+float3 gravity;
 int numParticles;
 float3 minBoundary;
 float3 maxBoundary;
@@ -46,15 +51,10 @@ float  restDensity;
 float  viscosity;
 
 float ComputeDensity(float dist_sq, float er_sq ){
-    float x =   1 - dist_sq / er_sq;
+    float x =   er_sq - dist_sq;
     return mass * poly6Kernel * x * x * x;
 }
 
-float SpikyKernelSecondDerivative(float distance)
-{
-    float x = 1 - distance / radious ;
-    return 90.f / ( 3.14 * pow(radious,5)) * x;
-}
 
 
 [numthreads(THREADGROUPSIZE_X, THREADGROUPSIZE_Y, THREADGROUPSIZE_Z)]
@@ -89,7 +89,7 @@ float ComputePressure(float density){
 float3 ComputeLapVelocity(float dist, float3 velocity, float3 i_velocity, float i_density){
     float3 vdiff = i_velocity - velocity;
     float mass_ratio = mass / mass;
-    float diff =  1 - dist / radious;
+    float diff =  radious- dist;
     float lap = lapKernel * diff;
     return mass_ratio * viscosity * (1/i_density) * lap * vdiff; 
 }
@@ -100,7 +100,7 @@ float3 ComputeGradPressure(float dist, float pressure, float density, float i_pr
     float density2 = density * density;
 	float avgPressure = 0.5 * (i_pressure / i_density + pressure / density );
     float mass_ratio = mass / mass;
-    float diff =  1 - dist / radious;
+    float diff =  radious- dist ;
     float spiky = spikyKernel * diff * diff;
     return mass_ratio * avgPressure * spiky;
 }
@@ -136,14 +136,84 @@ void Force(uint3 ThreadId : SV_DispatchThreadID)
         }
    }
    //update
-   force += float3(0.0f,0.0f,1.0f) * gravity;
+   force +=  gravity;
    particlesForce_write[index].force = force;
 }
+void Lock(){
+    uint org;
+    InterlockedCompareExchange(mutex[0],0,1, org);
+    while(org != 0){    
+        InterlockedCompareExchange(mutex[0],0,1,org);
+    }
+}
+void Unlock(){
+    uint org;
+    InterlockedExchange(mutex[0], 0, org);
+}
 
+float evaluateSpeedOfSoundSquared(float pressure,float density) {
+    if (density < 0.00001f) {
+        return 0.0f;
+    }
+    return 1.0f*(pressure) / density;
+}
+groupshared float3 cache[THREADGROUPSIZE_X * THREADGROUPSIZE_Y * THREADGROUPSIZE_Z];
+[numthreads(THREADGROUPSIZE_X, THREADGROUPSIZE_Y, THREADGROUPSIZE_Z)]
+void DeltaTimeReduction(uint3 Gid : SV_GroupID, //atm: -, 0...256, - in rows (Y)        --> current group index (dispatched by c++)
+                       uint3 ThreadId : SV_DispatchThreadID, //atm: 0...256 in rows & columns (XY)   --> "global" thread id
+                       uint3 GTid : SV_GroupThreadID, //atm: 0...256, -,- in columns (X)      --> current threadId in group / "local" threadId
+                       uint GI : SV_GroupIndex)
+{
+
+    int index = ThreadId.x;
+    int cacheIdx = GTid.x;
+    float density = particlesDensity_read[index].density;
+    float pressure = ComputePressure(density);
+    float gamma = 1.0f;
+    float3 velocity = particles_read[index].velocity;
+    float3 force = particlesForce_read[index].force;
+
+
+    float vel_max = max(0,dot(velocity,velocity));
+    float force_max = max(0,dot(force, force));
+    float c_max = evaluateSpeedOfSoundSquared(pressure, density);
+
+    cache[cacheIdx] = float3(c_max, vel_max, force_max);
+    GroupMemoryBarrierWithGroupSync();
+
+    int step = numParticles >> 1;
+    while( step != 0 ) {
+      if(cacheIdx < step){
+        cache[cacheIdx].x = max(cache[cacheIdx].x, cache[cacheIdx + step].x);
+        cache[cacheIdx].y = max(cache[cacheIdx].y, cache[cacheIdx + step].y);
+        cache[cacheIdx].z = max(cache[cacheIdx].z, cache[cacheIdx + step].z);
+      }
+      GroupMemoryBarrierWithGroupSync();
+      step = step >> 1; 
+    }
+
+    if(cacheIdx == 0){
+        Lock();
+        cvf_max[0].x = max(cache[0].x, cvf_max[0].x);
+        cvf_max[0].y = max(cache[0].y, cvf_max[0].y);
+        cvf_max[0].z = max(cache[0].z, cvf_max[0].z);
+        Unlock();
+    }
+    //GroupMemoryBarrierWithGroupSync();
+    //if(index == 0){
+    //    float C = 1.0f;
+    //    dt_write[0] = max(max(C * radious /  cvf_max[0].y, sqrt(radious/cvf_max[0].z)), (C * radious) / cvf_max[0].x);
+    //}
+
+}
 
 [numthreads(THREADGROUPSIZE_X, THREADGROUPSIZE_Y, THREADGROUPSIZE_Z)]
-void MainComputeShader(uint3 ThreadId : SV_DispatchThreadID)
+void MainComputeShader(uint3 Gid : SV_GroupID, //atm: -, 0...256, - in rows (Y)        --> current group index (dispatched by c++)
+                       uint3 ThreadId : SV_DispatchThreadID, //atm: 0...256 in rows & columns (XY)   --> "global" thread id
+                       uint3 GTid : SV_GroupThreadID, //atm: 0...256, -,- in columns (X)      --> current threadId in group / "local" threadId
+                       uint GI : SV_GroupIndex)            //atm: 0...256 in columns (X)           --> "flattened" index of a thread within a group))
 {
+    
     int index = ThreadId.x;
     if(index >= numParticles) return;
     Particle particle = particles_read[index];
