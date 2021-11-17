@@ -27,12 +27,13 @@ RWStructuredBuffer<ParticleDensity> particlesDensity_read;
 RWStructuredBuffer<ParticleDensity> particlesDensity_write;
 
 RWStructuredBuffer<float3> cvf_max;
-
-
-
 RWStructuredBuffer<float> dt_read;
 RWStructuredBuffer<float> dt_write;
 RWStructuredBuffer<uint> mutex;
+
+RWStructuredBuffer<int> grid;
+RWStructuredBuffer<int> grid_cells;
+
 
 float delta_time;
 float mass;
@@ -49,12 +50,54 @@ float  lapKernel;
 float  pressureCoef;
 float  restDensity;
 float  viscosity;
+uint   maxParticlesPerCell;
+uint   grid_size;
+
+float CellSize(){
+    return radious;
+}
+
+int3 GetGridCellCoord(float3 coord){
+    float cell_size=  CellSize();
+    return int3((coord - minBoundary) / cell_size);
+    //return int3((coord.x - minBoundary.x) / cell_size,(coord.y - minBoundary.y)  / cell_size,(coord.z - minBoundary.z) / cell_size);
+}
+int GetCellId(int3 coord, int3 resolution){
+    return coord.x + coord.y * resolution.x + coord.z * resolution.x * resolution.y;
+}
+
+[numthreads(THREADGROUPSIZE_X, THREADGROUPSIZE_Y, THREADGROUPSIZE_Z)]
+void ClearGrid(uint3 ThreadId : SV_DispatchThreadID)
+{
+   if(ThreadId.x >= grid_size)
+        return;
+    // just set the cell array size back to 0;
+    grid[ThreadId.x] = 0;
+}
+
+[numthreads(THREADGROUPSIZE_X, THREADGROUPSIZE_Y, THREADGROUPSIZE_Z)]
+void CreateGrid(uint3 ThreadId : SV_DispatchThreadID)
+{
+   uint tid = ThreadId.x;
+   if(tid >= numParticles)
+        return;
+
+   int3 resolution = int3(ceil((maxBoundary - minBoundary) / CellSize()));
+   const int cellId = GetCellId(GetGridCellCoord(particles_read[tid].position), resolution);
+   int idx = 0;
+   InterlockedAdd(grid[cellId], 1, idx);
+   if(idx >= maxParticlesPerCell){
+        return;
+   }
+   grid_cells[cellId * maxParticlesPerCell + idx] = tid;
+}
+
+
 
 float ComputeDensity(float dist_sq, float er_sq ){
     float x =   er_sq - dist_sq;
     return mass * poly6Kernel * x * x * x;
 }
-
 
 
 [numthreads(THREADGROUPSIZE_X, THREADGROUPSIZE_Y, THREADGROUPSIZE_Z)]
@@ -68,17 +111,41 @@ void Density(uint3 ThreadId : SV_DispatchThreadID)
 
    float3 position = particle.position;
    
+
+   
    //O(n^2) density calculation
-   for(int i = 0; i < numParticles; i++){
-        float3 other = particles_read[i].position;
-        float3 res = other - position;
-        float dist_sq = dot(res,res);
-        if(dist_sq < er_sq){
-            density += ComputeDensity(dist_sq,er_sq);
-        }
+   //for(int i = 0; i < numParticles; i++){
+   //     float3 other = particles_read[i].position;
+   //     float3 res = other - position;
+   //     float dist_sq = dot(res,res);
+   //     if(dist_sq < er_sq){
+   //         density += ComputeDensity(dist_sq,er_sq);
+   //     }
+   //}
+
+   int3 gridCoord = GetGridCellCoord(position);   
+   int3 resolution = int3((maxBoundary - minBoundary) / CellSize());
+   
+   for(int i = -1; i < 2; i++){
+   for(int j = -1; j < 2; j++){
+   for(int k = -1; k < 2; k++){
+      if(any(gridCoord + int3(i,j,k) < int3(0,0,0)) || any(gridCoord + int3(i,j,k) >= resolution)) continue;
+      int cellId = GetCellId(gridCoord + int3(i,j,k), resolution);
+      const int size = min(grid[cellId], maxParticlesPerCell);
+      for(int l = 0; l < size; l++){
+            int idx = grid_cells[cellId * maxParticlesPerCell + l];
+            float3 other = particles_read[idx].position;
+            float3 res = other - position;
+            float dist_sq = dot(res,res);
+            if(dist_sq < er_sq){
+                density += ComputeDensity(dist_sq,er_sq);
+            }
+      }
+   }
+   }    
    }
    // Update density
-   particlesDensity_write[index].density = density;
+   particlesDensity_write[index].density = max(density, 0.001f);
 }
 
 float ComputePressure(float density){
@@ -109,8 +176,7 @@ float3 ComputeGradPressure(float dist, float pressure, float density, float i_pr
 void Force(uint3 ThreadId : SV_DispatchThreadID)
 {
    int index = ThreadId.x;
-   if(index >= numParticles)
-        return;
+   if(index >= numParticles) return;
 
    float3 position = particles_read[index].position;
    float3 velocity = particles_read[index].velocity;
@@ -121,22 +187,50 @@ void Force(uint3 ThreadId : SV_DispatchThreadID)
    float3 force = float3(0,0,0);
 
    //O(n^2) force calculation
-   for(int i = 0; i < numParticles; i++){
-        if(i == index) continue;
-        float3 other = particles_read[i].position;
-        float3 res = other - position;
-        float dist_sq = dot(res,res);
-        if(dist_sq < er_sq && dist_sq > 0 ){
-            float3 i_velocity = particles_read[i].velocity;
-            float i_density = particlesDensity_read[i].density;
-            float i_pressure = ComputePressure(i_density);
-            float dist = sqrt(dist_sq);
-            force -= normalize(res) * ComputeGradPressure(dist, pressure, density, i_pressure, i_density);
-            force += ComputeLapVelocity(dist, velocity, i_velocity, i_density);
-        }
+   //for(int i = 0; i < numParticles; i++){
+   //     if(i == index) continue;
+   //     float3 other = particles_read[i].position;
+   //     float3 res = other - position;
+   //     float dist_sq = dot(res,res);
+   //     if(dist_sq < er_sq && dist_sq > 0 ){
+   //         float3 i_velocity = particles_read[i].velocity;
+   //         float i_density = particlesDensity_read[i].density;
+   //         float i_pressure = ComputePressure(i_density);
+   //         float dist = sqrt(dist_sq);
+   //         force -= normalize(res) * ComputeGradPressure(dist, pressure, density, i_pressure, i_density);
+   //         force += ComputeLapVelocity(dist, velocity, i_velocity, i_density);
+   //     }
+   //}
+   int3 gridCoord = GetGridCellCoord(position);   
+   int3 resolution = int3((maxBoundary - minBoundary) / CellSize());
+   
+   for(int i = -1; i < 2; i++){
+   for(int j = -1; j < 2; j++){
+   for(int k = -1; k < 2; k++){
+      if(any(gridCoord + int3(i,j,k) < int3(0,0,0) ) || any(gridCoord + int3(i,j,k) > resolution)) continue;
+      int cellId = GetCellId(gridCoord + int3(i,j,k), resolution);
+      const int size = min(grid[cellId], maxParticlesPerCell);
+      for(int l = 0; l < size; l++){
+            int idx = grid_cells[cellId * maxParticlesPerCell + l];
+            if(idx == index) continue;
+            float3 res = particles_read[idx].position - position;
+            float dist_sq = dot(res,res);
+            if(dist_sq < er_sq && dist_sq > 0.00001f ){
+                float3 i_velocity = particles_read[idx].velocity;
+                float i_density = particlesDensity_read[idx].density;
+                float i_pressure = ComputePressure(i_density);
+                float dist = sqrt(dist_sq);
+                force -= (res / dist) * ComputeGradPressure(dist, pressure, density, i_pressure, i_density);
+                force += ComputeLapVelocity(dist, velocity, i_velocity, i_density);
+            }   
+      }
    }
+   }    
+   }
+   
+
    //update
-   force +=  gravity;
+   force += gravity;
    particlesForce_write[index].force = force;
 }
 void Lock(){
@@ -152,9 +246,9 @@ void Unlock(){
 }
 
 float evaluateSpeedOfSoundSquared(float pressure,float density) {
-    if (density < 0.00001f) {
-        return 0.0f;
-    }
+    //if (density < 0.00001f) {
+    //    return 0.0f;
+    //}
     return 1.0f*(pressure) / density;
 }
 groupshared float3 cache[THREADGROUPSIZE_X * THREADGROUPSIZE_Y * THREADGROUPSIZE_Z];

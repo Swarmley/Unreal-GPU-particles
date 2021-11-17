@@ -35,6 +35,7 @@ struct ParticleDensity {
 	float density;
 };
 
+
 class FComputeShaderDeclaration : public FGlobalShader
 {
 public:
@@ -61,6 +62,9 @@ public:
 		SHADER_PARAMETER_UAV(RWStructuredBuffer<float>, dt_read)
 		SHADER_PARAMETER_UAV(RWStructuredBuffer<float>, dt_write)
 		SHADER_PARAMETER_UAV(RWStructuredBuffer<uint32>, mutex)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<int>, grid)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<int>, grid_cells)
+
 
 		SHADER_PARAMETER(float, delta_time)
 		SHADER_PARAMETER(float, mass)
@@ -77,7 +81,8 @@ public:
 		SHADER_PARAMETER(float, pressureCoef)
 		SHADER_PARAMETER(float, restDensity)
 		SHADER_PARAMETER(float, viscosity)
-
+		SHADER_PARAMETER(uint32, maxParticlesPerCell)
+		SHADER_PARAMETER(uint32, grid_size)
 	END_SHADER_PARAMETER_STRUCT()
 	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) {
 		return GetMaxSupportedFeatureLevel(Parameters.Platform) >= ERHIFeatureLevel::SM5;
@@ -113,6 +118,9 @@ public:
 		SHADER_PARAMETER_UAV(RWStructuredBuffer<float>, dt_read)
 		SHADER_PARAMETER_UAV(RWStructuredBuffer<float>, dt_write)
 		SHADER_PARAMETER_UAV(RWStructuredBuffer<uint32>, mutex)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<int>, grid)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<int>, grid_cells)
+
 
 		SHADER_PARAMETER(float, delta_time)
 		SHADER_PARAMETER(float, mass)
@@ -129,7 +137,8 @@ public:
 		SHADER_PARAMETER(float, pressureCoef)
 		SHADER_PARAMETER(float, restDensity)
 		SHADER_PARAMETER(float, viscosity)
-
+		SHADER_PARAMETER(uint32, maxParticlesPerCell)
+		SHADER_PARAMETER(uint32, grid_size)
 		END_SHADER_PARAMETER_STRUCT()
 		static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) {
 		return GetMaxSupportedFeatureLevel(Parameters.Platform) >= ERHIFeatureLevel::SM5;
@@ -166,6 +175,9 @@ public:
 		SHADER_PARAMETER_UAV(RWStructuredBuffer<float>, dt_write)
 		SHADER_PARAMETER_UAV(RWStructuredBuffer<uint32>, mutex)
 
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<int>, grid)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<int>, grid_cells)
+
 
 		SHADER_PARAMETER(float, delta_time)
 		SHADER_PARAMETER(float, mass)
@@ -182,6 +194,8 @@ public:
 		SHADER_PARAMETER(float, pressureCoef)
 		SHADER_PARAMETER(float, restDensity)
 		SHADER_PARAMETER(float, viscosity)
+		SHADER_PARAMETER(uint32, maxParticlesPerCell)
+		SHADER_PARAMETER(uint32, grid_size)
 		END_SHADER_PARAMETER_STRUCT()
 		static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) {
 		return GetMaxSupportedFeatureLevel(Parameters.Platform) >= ERHIFeatureLevel::SM5;
@@ -216,8 +230,12 @@ public:
 		SHADER_PARAMETER_UAV(RWStructuredBuffer<FVector>, cvf_max)
 		SHADER_PARAMETER_UAV(RWStructuredBuffer<float>, dt_read)
 		SHADER_PARAMETER_UAV(RWStructuredBuffer<float>, dt_write)
-
 		SHADER_PARAMETER_UAV(RWStructuredBuffer<uint32>, mutex)
+
+
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<int>, grid)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<int>, grid_cells)
+
 
 
 		SHADER_PARAMETER(float, delta_time)
@@ -235,8 +253,127 @@ public:
 		SHADER_PARAMETER(float, pressureCoef)
 		SHADER_PARAMETER(float, restDensity)
 		SHADER_PARAMETER(float, viscosity)
+		SHADER_PARAMETER(uint32, maxParticlesPerCell)
+		SHADER_PARAMETER(uint32, grid_size)
 		END_SHADER_PARAMETER_STRUCT()
 	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) {
+		return GetMaxSupportedFeatureLevel(Parameters.Platform) >= ERHIFeatureLevel::SM5;
+	};
+
+	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment);
+
+public:
+};
+class FComputeCreateGridDeclaration : public FGlobalShader
+{
+public:
+	//Declare this class as a global shader
+	DECLARE_GLOBAL_SHADER(FComputeCreateGridDeclaration);
+	//Tells the engine that this shader uses a structure for its parameters
+	SHADER_USE_PARAMETER_STRUCT(FComputeCreateGridDeclaration, FGlobalShader);
+	/// <summary>
+	/// DECLARATION OF THE PARAMETER STRUCTURE
+	/// The parameters must match the parameters in the HLSL code
+	/// For each parameter, provide the C++ type, and the name (Same name used in HLSL code)
+	/// </summary>
+	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<Particle>, particles_read)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<Particle>, particles_write)
+
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<ParticleForce>, particlesForce_read)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<ParticleForce>, particlesForce_write)
+
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<ParticleDensity>, particlesDensity_read)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<ParticleDensity>, particlesDensity_write)
+
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<FVector>, cvf_max)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<float>, dt_read)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<float>, dt_write)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<uint32>, mutex)
+
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<int>, grid)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<int>, grid_cells)
+
+
+
+		SHADER_PARAMETER(float, delta_time)
+		SHADER_PARAMETER(float, mass)
+		SHADER_PARAMETER(FVector, gravity)
+		SHADER_PARAMETER(int, numParticles)
+		SHADER_PARAMETER(FVector, minBoundary)
+		SHADER_PARAMETER(FVector, maxBoundary)
+		SHADER_PARAMETER(float, damping)
+		SHADER_PARAMETER(float, epsilon)
+		SHADER_PARAMETER(float, radious)
+		SHADER_PARAMETER(float, poly6Kernel)
+		SHADER_PARAMETER(float, spikyKernel)
+		SHADER_PARAMETER(float, lapKernel)
+		SHADER_PARAMETER(float, pressureCoef)
+		SHADER_PARAMETER(float, restDensity)
+		SHADER_PARAMETER(float, viscosity)
+		SHADER_PARAMETER(uint32, maxParticlesPerCell)
+		SHADER_PARAMETER(uint32, grid_size)
+		END_SHADER_PARAMETER_STRUCT()
+		static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) {
+		return GetMaxSupportedFeatureLevel(Parameters.Platform) >= ERHIFeatureLevel::SM5;
+	};
+
+	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment);
+
+public:
+};
+class FComputeClearGridDeclaration : public FGlobalShader
+{
+public:
+	//Declare this class as a global shader
+	DECLARE_GLOBAL_SHADER(FComputeClearGridDeclaration);
+	//Tells the engine that this shader uses a structure for its parameters
+	SHADER_USE_PARAMETER_STRUCT(FComputeClearGridDeclaration, FGlobalShader);
+	/// <summary>
+	/// DECLARATION OF THE PARAMETER STRUCTURE
+	/// The parameters must match the parameters in the HLSL code
+	/// For each parameter, provide the C++ type, and the name (Same name used in HLSL code)
+	/// </summary>
+	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<Particle>, particles_read)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<Particle>, particles_write)
+
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<ParticleForce>, particlesForce_read)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<ParticleForce>, particlesForce_write)
+
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<ParticleDensity>, particlesDensity_read)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<ParticleDensity>, particlesDensity_write)
+
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<FVector>, cvf_max)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<float>, dt_read)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<float>, dt_write)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<uint32>, mutex)
+
+
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<int>, grid)
+		SHADER_PARAMETER_UAV(RWStructuredBuffer<int>, grid_cells)
+
+
+
+		SHADER_PARAMETER(float, delta_time)
+		SHADER_PARAMETER(float, mass)
+		SHADER_PARAMETER(FVector, gravity)
+		SHADER_PARAMETER(int, numParticles)
+		SHADER_PARAMETER(FVector, minBoundary)
+		SHADER_PARAMETER(FVector, maxBoundary)
+		SHADER_PARAMETER(float, damping)
+		SHADER_PARAMETER(float, epsilon)
+		SHADER_PARAMETER(float, radious)
+		SHADER_PARAMETER(float, poly6Kernel)
+		SHADER_PARAMETER(float, spikyKernel)
+		SHADER_PARAMETER(float, lapKernel)
+		SHADER_PARAMETER(float, pressureCoef)
+		SHADER_PARAMETER(float, restDensity)
+		SHADER_PARAMETER(float, viscosity)
+		SHADER_PARAMETER(uint32, maxParticlesPerCell)
+		SHADER_PARAMETER(uint32, grid_size)
+		END_SHADER_PARAMETER_STRUCT()
+		static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) {
 		return GetMaxSupportedFeatureLevel(Parameters.Platform) >= ERHIFeatureLevel::SM5;
 	};
 
@@ -304,11 +441,16 @@ public:
 		float rest_density = 1000.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		FVector	 startVelocity = {0,0,0};
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+		 int	maxParticlesPerCell = 500;
 
 	//UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	TArray<Particle> outputParticles;
 	TArray<ParticleForce> outputForces;
 	TArray<ParticleDensity> outputDensities;
+	uint32 grid_size;
+	TArray<int> debugGrid;
+	TArray<int> debugGridCells;
 
 protected:
 
@@ -324,7 +466,9 @@ protected:
 	GPUBuffer force_buffers[2];
 	GPUBuffer density_buffers[2];
 	GPUBuffer dt_buffers[2];
-	
+	GPUBuffer grid_buffers[2];
+	GPUBuffer grid_cells_buffers[2];
+
 	GPUBuffer cvf_buffer;
 	GPUBuffer mutex_buffer;
 

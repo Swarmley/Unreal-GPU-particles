@@ -32,7 +32,7 @@ void UComputeShaderTestComponent::BeginPlay()
 	maxBoundary = box.Max - loc;
 
 	FRandomStream rng;
-	{
+	
 		TResourceArray<Particle> particleResourceArray_read;
 		TResourceArray<Particle> particleResourceArray_write;
 
@@ -48,12 +48,23 @@ void UComputeShaderTestComponent::BeginPlay()
 		TResourceArray<FVector> cvf_max;
 		TResourceArray<uint32> mutex;
 
-		
-		//numBoids = width * height * depth;
+		TResourceArray<int> grid_read;
+		TResourceArray<int> grid_write;
+
+		TResourceArray<int> grid_cells_read;
+		TResourceArray<int> grid_cells_write;
+
+
 		int width, height, depth;
 		width = maxBoundary.X - minBoundary.X;
 		height = maxBoundary.Y - minBoundary.Y;
 		depth = maxBoundary.Z - minBoundary.Z;
+
+		FVector resolution = (maxBoundary - minBoundary) / (effective_radious );
+
+
+		grid_size = ceil(resolution.X) * ceil(resolution.Y) * ceil(resolution.Z);
+
 
 		{
 			Particle p;
@@ -67,6 +78,13 @@ void UComputeShaderTestComponent::BeginPlay()
 			particleForceResourceArray_write.Init(f, numBoids);
 			particleDensityResourceArray_read.Init(d, numBoids);
 			particleDensityResourceArray_write.Init(d, numBoids);
+
+			grid_read.Init(0, grid_size);
+			grid_write.Init(0, grid_size);
+
+			grid_cells_read.Init(0, grid_size * maxParticlesPerCell);
+			grid_cells_write.Init(0, grid_size * maxParticlesPerCell);
+
 
 			dt_read.Init(0, 1);
 			dt_write.Init(0, 1);
@@ -148,17 +166,40 @@ void UComputeShaderTestComponent::BeginPlay()
 		mutex_buffer.BufferUAV = RHICreateUnorderedAccessView(mutex_buffer.Buffer, false, false);
 
 	}
-	
+	{
+		FRHIResourceCreateInfo createInfo_read;
+		createInfo_read.ResourceArray = &grid_read;
+		FRHIResourceCreateInfo createInfo_write;
+		createInfo_write.ResourceArray = &grid_write;
+		grid_buffers[Read].Buffer = RHICreateStructuredBuffer(sizeof(int), sizeof(int) * grid_size, BUF_UnorderedAccess | BUF_ShaderResource, createInfo_read);
+		grid_buffers[Read].BufferUAV = RHICreateUnorderedAccessView(grid_buffers[Read].Buffer, false, false);
+
+		grid_buffers[Write].Buffer = RHICreateStructuredBuffer(sizeof(int), sizeof(int) * grid_size, BUF_UnorderedAccess | BUF_ShaderResource, createInfo_write);
+		grid_buffers[Write].BufferUAV = RHICreateUnorderedAccessView(grid_buffers[Write].Buffer, false, false);
 	}
+	{
+		FRHIResourceCreateInfo createInfo_read;
+		createInfo_read.ResourceArray = &grid_cells_read;
+		FRHIResourceCreateInfo createInfo_write;
+		createInfo_write.ResourceArray = &grid_cells_write;
+		grid_cells_buffers[Read].Buffer = RHICreateStructuredBuffer(sizeof(int), sizeof(int) * grid_size * maxParticlesPerCell, BUF_UnorderedAccess | BUF_ShaderResource, createInfo_read);
+		grid_cells_buffers[Read].BufferUAV = RHICreateUnorderedAccessView(grid_cells_buffers[Read].Buffer, false, false);
 
-
+		grid_cells_buffers[Write].Buffer = RHICreateStructuredBuffer(sizeof(int), sizeof(int) * grid_size* maxParticlesPerCell, BUF_UnorderedAccess | BUF_ShaderResource, createInfo_write);
+		grid_cells_buffers[Write].BufferUAV = RHICreateUnorderedAccessView(grid_cells_buffers[Write].Buffer, false, false);
+	}
+	
+	debugGrid.Init(0, grid_size);
+	debugGridCells.Init(0, grid_size* maxParticlesPerCell);
 	if (outputParticles.Num() != numBoids)
 	{
 		const FVector zero(0.0f);
 		Particle p;
 		p.position = FVector::ZeroVector;
 		p.velocity = FVector::ZeroVector;
-		outputParticles.Init(p, numBoids);
+		outputParticles.Init(p ,numBoids);
+		memcpy(outputParticles.GetData(), particleResourceArray_read.GetData(), numBoids * sizeof(Particle));
+
 		ParticleForce f;
 		f.force = zero;
 		outputForces.Init(f, numBoids);
@@ -174,11 +215,7 @@ void UComputeShaderTestComponent::TickComponent(float DeltaTime, ELevelTick Tick
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 	
-	auto box = GetOwner()->FindComponentByClass<UDrawBoundaryComponent>()->Bounds.GetBox();
-	auto loc = GetOwner()->GetActorLocation();
 
-	minBoundary = box.Min - loc;
-	maxBoundary = box.Max - loc;
 
 	ENQUEUE_RENDER_COMMAND(FComputeShaderRunner)(
 	[&](FRHICommandList& RHICommands)
@@ -186,9 +223,96 @@ void UComputeShaderTestComponent::TickComponent(float DeltaTime, ELevelTick Tick
 		const float poly6Kernel = 315.f / (65.f * PI * pow(effective_radious, 9.f));
 		const float spikeyKernel = -45.f / (PI * pow(effective_radious, 6.f));
 		const float lapKernel = 45.f / (PI * pow(effective_radious, 6.f));
+		auto box = GetOwner()->FindComponentByClass<UDrawBoundaryComponent>()->Bounds.GetBox();
+		auto loc = GetOwner()->GetActorLocation();
+
+
+		minBoundary = box.Min - loc;
+		maxBoundary = box.Max - loc;
 
 		{
+		
+			TShaderMapRef<FComputeClearGridDeclaration> cs(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
+			FRHIComputeShader* rhiComputeShader = cs.GetComputeShader();
+			FComputeClearGridDeclaration::FParameters params;
+			params.grid = grid_buffers[Write].BufferUAV;
+			params.grid_size = grid_size;
+			RHICommands.SetComputeShader(rhiComputeShader);
+			{
+				FRHITransitionInfo info(grid_buffers[Write].BufferUAV, ERHIAccess::ERWBarrier, ERHIAccess::ERWBarrier, EResourceTransitionFlags::None);
+				RHICommands.Transition(info);
+			}
+			FComputeShaderUtils::Dispatch(RHICommands, cs, params, FIntVector(FMath::DivideAndRoundUp((int)grid_size, NUM_THREADS_PER_GROUP_DIMENSION), 1, 1));
+			//RHICommands.WaitForDispatch();
+			//{
+			//	//TArray<uint32> debugGrid;
+			//	uint8* particledata = (uint8*)RHILockStructuredBuffer(grid_buffers[Write].Buffer, 0, grid_size * sizeof(int), RLM_ReadOnly);
+			//	FMemory::Memcpy(debugGrid.GetData(), particledata, debugGrid.Num() * sizeof(int));
+			//	RHIUnlockStructuredBuffer(grid_buffers[Write].Buffer);
+			//}
+			//{
+			//	uint8* particledata = (uint8*)RHILockStructuredBuffer(grid_cells_buffers[Write].Buffer, 0, debugGridCells.Num() * sizeof(int), RLM_WriteOnly);
+			//	FMemory::Memzero(particledata, debugGridCells.Num() * sizeof(int));
+			//	RHIUnlockStructuredBuffer(grid_cells_buffers[Write].Buffer);
+			//}
+		}
+		
+		{
 
+			TShaderMapRef<FComputeCreateGridDeclaration> cs(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
+			FRHIComputeShader* rhiComputeShader = cs.GetComputeShader();
+			FComputeCreateGridDeclaration::FParameters params;
+			params.particles_read = buffers[Read].BufferUAV;
+			params.grid = grid_buffers[Write].BufferUAV;
+			params.grid_cells = grid_cells_buffers[Write].BufferUAV;
+			params.numParticles = numBoids;
+			params.radious = effective_radious;
+			params.maxParticlesPerCell = maxParticlesPerCell;
+			params.minBoundary = minBoundary;
+			params.maxBoundary = maxBoundary;
+			params.grid_size = grid_size;
+			RHICommands.SetComputeShader(rhiComputeShader);
+			{
+				FRHITransitionInfo info(grid_cells_buffers[Write].BufferUAV, ERHIAccess::ERWBarrier, ERHIAccess::ERWBarrier, EResourceTransitionFlags::None);
+				RHICommands.Transition(info);
+			}
+			FComputeShaderUtils::Dispatch(RHICommands, cs, params, FIntVector(FMath::DivideAndRoundUp(numBoids, NUM_THREADS_PER_GROUP_DIMENSION), 1, 1));
+			RHICommands.WaitForDispatch();
+			//{
+			//	FRHITransitionInfo info(grid_cells_buffers[Write].BufferUAV, ERHIAccess::ERWBarrier, ERHIAccess::ERWBarrier, EResourceTransitionFlags::None);
+			//	RHICommands.Transition(info);
+			//}
+
+			
+			//{
+			//	uint8* particledata = (uint8*)RHILockStructuredBuffer(grid_cells_buffers[Write].Buffer, 0, debugGridCells.Num() * sizeof(int), RLM_ReadOnly);
+			//	FMemory::Memcpy(debugGridCells.GetData(), particledata, debugGridCells.Num() * sizeof(int));
+			//	RHIUnlockStructuredBuffer(grid_cells_buffers[Write].Buffer);
+			//	int sum = 0;
+			//	for (auto i : debugGridCells) {
+			//		if(i > 0)
+			//			sum += 1;
+			//	}
+			//	int l = 0;;
+			//}
+			//{
+			//	uint8* particledata = (uint8*)RHILockStructuredBuffer(grid_buffers[Write].Buffer, 0, debugGrid.Num() * sizeof(int), RLM_ReadOnly);
+			//	FMemory::Memcpy(debugGrid.GetData(), particledata, debugGrid.Num() * sizeof(int));
+			//	RHIUnlockStructuredBuffer(grid_buffers[Write].Buffer);
+			//	int sum = 0;
+			//	for (auto i : debugGrid) {
+			//		sum = std::max(i,sum);
+			//	}
+			//	int l = 0;;
+			//}
+			std::swap(grid_buffers[Read], grid_buffers[Write]);
+			std::swap(grid_cells_buffers[Read], grid_cells_buffers[Write]);
+
+		}
+
+
+		{
+		
 			TShaderMapRef<FComputeDensityDeclaration> cs(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
 			FRHIComputeShader* rhiComputeShader = cs.GetComputeShader();
 			FComputeDensityDeclaration::FParameters params;
@@ -200,6 +324,10 @@ void UComputeShaderTestComponent::TickComponent(float DeltaTime, ELevelTick Tick
 			params.radious = effective_radious;
 			params.poly6Kernel = poly6Kernel;
 			params.restDensity = rest_density;
+			params.grid = grid_buffers[Read].BufferUAV;
+			params.grid_cells = grid_cells_buffers[Read].BufferUAV;
+			params.grid_size = grid_size;
+			params.maxParticlesPerCell = maxParticlesPerCell;
 			RHICommands.SetComputeShader(rhiComputeShader);
 			{
 				FRHITransitionInfo info(force_buffers[Write].BufferUAV, ERHIAccess::EReadable, ERHIAccess::EWritable, EResourceTransitionFlags::None);
@@ -210,14 +338,14 @@ void UComputeShaderTestComponent::TickComponent(float DeltaTime, ELevelTick Tick
 				FRHITransitionInfo info(force_buffers[Write].BufferUAV, ERHIAccess::EWritable, ERHIAccess::EReadable, EResourceTransitionFlags::None);
 				RHICommands.Transition(info);
 			}
-
-			uint8* particledata = (uint8*)RHILockStructuredBuffer(density_buffers[Write].Buffer, 0, numBoids * sizeof(ParticleDensity), RLM_ReadOnly);
-			FMemory::Memcpy(outputDensities.GetData(), particledata, numBoids * sizeof(ParticleDensity));
-			RHIUnlockStructuredBuffer(density_buffers[Write].Buffer);
+		
+			//uint8* particledata = (uint8*)RHILockStructuredBuffer(density_buffers[Write].Buffer, 0, numBoids * sizeof(ParticleDensity), RLM_ReadOnly);
+			//FMemory::Memcpy(outputDensities.GetData(), particledata, numBoids * sizeof(ParticleDensity));
+			//RHIUnlockStructuredBuffer(density_buffers[Write].Buffer);
 			std::swap(density_buffers[Read], density_buffers[Write]);
 		}
-
-
+		
+		
 		{
 			{
 				uint8* particledata = (uint8*)RHILockStructuredBuffer(density_buffers[Read].Buffer, 0, numBoids * sizeof(ParticleDensity), RLM_ReadOnly);
@@ -231,6 +359,8 @@ void UComputeShaderTestComponent::TickComponent(float DeltaTime, ELevelTick Tick
 			params.particles_read = buffers[Read].BufferUAV;
 			params.particlesForce_write = force_buffers[Write].BufferUAV;
 			params.particlesDensity_read = density_buffers[Read].BufferUAV;
+			params.grid = grid_buffers[Read].BufferUAV;
+			params.grid_cells = grid_cells_buffers[Read].BufferUAV;
 			params.mass = mass;
 			params.gravity = gravity * 2000.f;
 			params.numParticles = numBoids;
@@ -243,6 +373,8 @@ void UComputeShaderTestComponent::TickComponent(float DeltaTime, ELevelTick Tick
 			params.pressureCoef = pressure_coef;
 			params.restDensity = rest_density;
 			params.viscosity = viscosity;
+			params.grid_size = grid_size;
+			params.maxParticlesPerCell = maxParticlesPerCell;
 			RHICommands.SetComputeShader(rhiComputeShader);
 			{
 				FRHITransitionInfo info(force_buffers[Write].BufferUAV, ERHIAccess::EReadable, ERHIAccess::EWritable, EResourceTransitionFlags::None);
@@ -254,12 +386,12 @@ void UComputeShaderTestComponent::TickComponent(float DeltaTime, ELevelTick Tick
 				FRHITransitionInfo info(force_buffers[Write].BufferUAV, ERHIAccess::EWritable, ERHIAccess::EReadable, EResourceTransitionFlags::None);
 				RHICommands.Transition(info);
 			}
-			uint8* particledata = (uint8*)RHILockStructuredBuffer(force_buffers[Write].Buffer, 0, numBoids * sizeof(ParticleForce), RLM_ReadOnly);
-			FMemory::Memcpy(outputForces.GetData(), particledata, numBoids * sizeof(ParticleForce));
-			RHIUnlockStructuredBuffer(force_buffers[Write].Buffer);
+			//uint8* particledata = (uint8*)RHILockStructuredBuffer(force_buffers[Write].Buffer, 0, numBoids * sizeof(ParticleForce), RLM_ReadOnly);
+			//FMemory::Memcpy(outputForces.GetData(), particledata, numBoids * sizeof(ParticleForce));
+			//RHIUnlockStructuredBuffer(force_buffers[Write].Buffer);
 			std::swap(force_buffers[Read], force_buffers[Write]);
 		}
-
+		
 		//double dt;
 		////dt
 		//{
@@ -319,13 +451,13 @@ void UComputeShaderTestComponent::TickComponent(float DeltaTime, ELevelTick Tick
 		//	//RHIUnlockStructuredBuffer(dt_buffers[Write].Buffer);
 		//	//std::swap(dt_buffers[Read], dt_buffers[Write]);
 		//}
-
-
+		
+		
 		{
 			TShaderMapRef<FComputeShaderDeclaration> cs(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
 			FRHIComputeShader* rhiComputeShader = cs.GetComputeShader();
 			FComputeShaderDeclaration::FParameters params;
-			params.delta_time = timeStep;// std::min(dt,(double)timeStep);
+			params.delta_time = timeStep;//std::min(dt,(double)timeStep);
 			params.particles_read = buffers[Read].BufferUAV;
 			params.particles_write = buffers[Write].BufferUAV;
 			params.particlesForce_read = force_buffers[Read].BufferUAV;
@@ -401,6 +533,24 @@ void FComputeDtDeclaration::ModifyCompilationEnvironment(const FGlobalShaderPerm
 	OutEnvironment.SetDefine(TEXT("THREADGROUPSIZE_Y"), 1);
 	OutEnvironment.SetDefine(TEXT("THREADGROUPSIZE_Z"), 1);
 }
+void FComputeCreateGridDeclaration::ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
+{
+	FGlobalShader::ModifyCompilationEnvironment(Parameters, OutEnvironment);
+	OutEnvironment.CompilerFlags.Add(CFLAG_StandardOptimization);
+	OutEnvironment.SetDefine(TEXT("THREADGROUPSIZE_X"), NUM_THREADS_PER_GROUP_DIMENSION);
+	OutEnvironment.SetDefine(TEXT("THREADGROUPSIZE_Y"), 1);
+	OutEnvironment.SetDefine(TEXT("THREADGROUPSIZE_Z"), 1);
+}
+void FComputeClearGridDeclaration::ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
+{
+	FGlobalShader::ModifyCompilationEnvironment(Parameters, OutEnvironment);
+	OutEnvironment.CompilerFlags.Add(CFLAG_StandardOptimization);
+	OutEnvironment.SetDefine(TEXT("THREADGROUPSIZE_X"), NUM_THREADS_PER_GROUP_DIMENSION);
+	OutEnvironment.SetDefine(TEXT("THREADGROUPSIZE_Y"), 1);
+	OutEnvironment.SetDefine(TEXT("THREADGROUPSIZE_Z"), 1);
+}
+IMPLEMENT_SHADER_TYPE(, FComputeClearGridDeclaration, TEXT("/ComputeShaderPlugin/Boid.usf"), TEXT("ClearGrid"), SF_Compute);
+IMPLEMENT_SHADER_TYPE(, FComputeCreateGridDeclaration, TEXT("/ComputeShaderPlugin/Boid.usf"), TEXT("CreateGrid"), SF_Compute);
 IMPLEMENT_SHADER_TYPE(, FComputeForceDeclaration, TEXT("/ComputeShaderPlugin/Boid.usf"), TEXT("Force"), SF_Compute);
 IMPLEMENT_SHADER_TYPE(, FComputeDensityDeclaration, TEXT("/ComputeShaderPlugin/Boid.usf"), TEXT("Density"), SF_Compute);
 IMPLEMENT_SHADER_TYPE(, FComputeDtDeclaration, TEXT("/ComputeShaderPlugin/Boid.usf"), TEXT("DeltaTimeReduction"), SF_Compute);
