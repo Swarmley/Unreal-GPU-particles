@@ -76,7 +76,7 @@ void UDrawPositionsComponent::_updateInstanceTransforms()
 		transform.SetScale3D(FVector(renderScale));
 		transform.SetRotation(FQuat::Identity);
 	}
-
+	
 	ismc->BatchUpdateInstancesTransforms(0, _instanceTransforms, false, true, true);
 }
 
