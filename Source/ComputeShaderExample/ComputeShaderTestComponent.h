@@ -83,6 +83,7 @@ public:
 		SHADER_PARAMETER(float, viscosity)
 		SHADER_PARAMETER(uint32, maxParticlesPerCell)
 		SHADER_PARAMETER(uint32, grid_size)
+		SHADER_PARAMETER(FIntVector, gridDimensions)
 	END_SHADER_PARAMETER_STRUCT()
 	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) {
 		return GetMaxSupportedFeatureLevel(Parameters.Platform) >= ERHIFeatureLevel::SM5;
@@ -139,6 +140,7 @@ public:
 		SHADER_PARAMETER(float, viscosity)
 		SHADER_PARAMETER(uint32, maxParticlesPerCell)
 		SHADER_PARAMETER(uint32, grid_size)
+		SHADER_PARAMETER(FIntVector, gridDimensions)
 		END_SHADER_PARAMETER_STRUCT()
 		static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) {
 		return GetMaxSupportedFeatureLevel(Parameters.Platform) >= ERHIFeatureLevel::SM5;
@@ -196,6 +198,7 @@ public:
 		SHADER_PARAMETER(float, viscosity)
 		SHADER_PARAMETER(uint32, maxParticlesPerCell)
 		SHADER_PARAMETER(uint32, grid_size)
+		SHADER_PARAMETER(FIntVector, gridDimensions)
 		END_SHADER_PARAMETER_STRUCT()
 		static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) {
 		return GetMaxSupportedFeatureLevel(Parameters.Platform) >= ERHIFeatureLevel::SM5;
@@ -255,6 +258,7 @@ public:
 		SHADER_PARAMETER(float, viscosity)
 		SHADER_PARAMETER(uint32, maxParticlesPerCell)
 		SHADER_PARAMETER(uint32, grid_size)
+		SHADER_PARAMETER(FIntVector, gridDimensions)
 		END_SHADER_PARAMETER_STRUCT()
 	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) {
 		return GetMaxSupportedFeatureLevel(Parameters.Platform) >= ERHIFeatureLevel::SM5;
@@ -313,6 +317,7 @@ public:
 		SHADER_PARAMETER(float, viscosity)
 		SHADER_PARAMETER(uint32, maxParticlesPerCell)
 		SHADER_PARAMETER(uint32, grid_size)
+		SHADER_PARAMETER(FIntVector, gridDimensions)
 		END_SHADER_PARAMETER_STRUCT()
 		static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) {
 		return GetMaxSupportedFeatureLevel(Parameters.Platform) >= ERHIFeatureLevel::SM5;
@@ -372,6 +377,9 @@ public:
 		SHADER_PARAMETER(float, viscosity)
 		SHADER_PARAMETER(uint32, maxParticlesPerCell)
 		SHADER_PARAMETER(uint32, grid_size)
+		SHADER_PARAMETER(FIntVector, gridDimensions)
+
+
 		END_SHADER_PARAMETER_STRUCT()
 		static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) {
 		return GetMaxSupportedFeatureLevel(Parameters.Platform) >= ERHIFeatureLevel::SM5;
@@ -448,7 +456,8 @@ public:
 	TArray<Particle> outputParticles;
 	TArray<ParticleForce> outputForces;
 	TArray<ParticleDensity> outputDensities;
-	uint32 grid_size;
+	int grid_size;
+	FIntVector grid_dimensions;
 	TArray<int> debugGrid;
 	TArray<int> debugGridCells;
 
