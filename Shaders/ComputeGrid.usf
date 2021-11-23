@@ -1,0 +1,54 @@
+#include "/Engine/Private/Common.ush"
+#include "GridHelpers.usf"
+//--------------------------------------------------------------------------------------
+// Structs
+//--------------------------------------------------------------------------------------
+struct Particle{
+    float3 position;
+    float3 velocity;
+};
+
+//--------------------------------------------------------------------------------------
+// Buffers
+//--------------------------------------------------------------------------------------
+
+RWStructuredBuffer<Particle> particles_read;
+RWStructuredBuffer<Particle> particles_write;
+
+RWStructuredBuffer<int> grid;
+RWStructuredBuffer<int> grid_cells;
+
+
+float radious;
+int numParticles;
+float3 minBoundary;
+float3 maxBoundary;
+uint   maxParticlesPerCell;
+uint   grid_size;
+int3   gridDimensions;
+
+
+[numthreads(THREADGROUPSIZE_X, THREADGROUPSIZE_Y, THREADGROUPSIZE_Z)]
+void ClearGrid(uint3 ThreadId : SV_DispatchThreadID)
+{
+   if(ThreadId.x >= grid_size)
+        return;
+    // just set the cell array size back to 0;
+    grid[ThreadId.x] = 0;
+}
+
+[numthreads(THREADGROUPSIZE_X, THREADGROUPSIZE_Y, THREADGROUPSIZE_Z)]
+void CreateGrid(uint3 ThreadId : SV_DispatchThreadID)
+{
+   uint tid = ThreadId.x;
+   if(tid >= numParticles)
+        return;
+
+   const int cellId = GetCellId(GetGridCellCoord(particles_read[tid].position), gridDimensions);
+   int idx = 0;
+   InterlockedAdd(grid[cellId], 1, idx);
+   if(idx >= maxParticlesPerCell){
+        return;
+   }
+   grid_cells[cellId * maxParticlesPerCell + idx] = tid;
+}

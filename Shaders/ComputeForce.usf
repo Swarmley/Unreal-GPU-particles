@@ -1,0 +1,129 @@
+#include "/Engine/Private/Common.ush"
+#include "GridHelpers.usf"
+//--------------------------------------------------------------------------------------
+// Structs
+//--------------------------------------------------------------------------------------
+struct Particle{
+    float3 position;
+    float3 velocity;
+};
+struct ParticleForce {
+	float3 force;
+};
+struct ParticleDensity {
+	float density;
+};
+//--------------------------------------------------------------------------------------
+// Buffers
+//--------------------------------------------------------------------------------------
+
+RWStructuredBuffer<Particle> particles_read;
+RWStructuredBuffer<ParticleForce> particlesForce_write;
+RWStructuredBuffer<ParticleDensity> particlesDensity_read;
+
+
+RWStructuredBuffer<int> grid;
+RWStructuredBuffer<int> grid_cells;
+
+float mass;
+float3 gravity;
+int numParticles;
+float  epsilon;
+float  radious;
+float  spikyKernel;
+float  lapKernel;
+float  pressureCoef;
+float  restDensity;
+float  viscosity;
+uint   maxParticlesPerCell;
+uint   grid_size;
+int3   gridDimensions;
+
+
+
+float ComputePressure(float density){
+   //density = max(density, restDensity);
+   return pressureCoef * (density - restDensity);
+}
+
+float3 ComputeLapVelocity(float dist, float3 velocity, float3 i_velocity, float i_density){
+    float3 vdiff = i_velocity - velocity;
+    float mass_ratio = mass / mass;
+    float diff =  radious- dist;
+    float lap = lapKernel * diff;
+    return mass_ratio * viscosity * (1/i_density) * lap * vdiff; 
+}
+float3 ComputeGradPressure(float dist, float pressure, float density, float i_pressure, float i_density)
+{
+
+    float i_density2 = i_density * i_density;
+    float density2 = density * density;
+	float avgPressure = 0.5 * (i_pressure / i_density + pressure / density );
+    float mass_ratio = mass / mass;
+    float diff =  radious- dist ;
+    float spiky = spikyKernel * diff * diff;
+    return mass_ratio * avgPressure * spiky;
+}
+
+[numthreads(THREADGROUPSIZE_X, THREADGROUPSIZE_Y, THREADGROUPSIZE_Z)]
+void Force(uint3 ThreadId : SV_DispatchThreadID)
+{
+   int index = ThreadId.x;
+   if(index >= numParticles) return;
+
+   float3 position = particles_read[index].position;
+   float3 velocity = particles_read[index].velocity;
+   float density = particlesDensity_read[index].density;
+   float pressure = ComputePressure(density);
+
+   const float er_sq = radious * radious;
+   float3 force = float3(0,0,0);
+
+   //O(n^2) force calculation
+   //for(int i = 0; i < numParticles; i++){
+   //     if(i == index) continue;
+   //     float3 other = particles_read[i].position;
+   //     float3 res = other - position;
+   //     float dist_sq = dot(res,res);
+   //     if(dist_sq < er_sq && dist_sq > 0 ){
+   //         float3 i_velocity = particles_read[i].velocity;
+   //         float i_density = particlesDensity_read[i].density;
+   //         float i_pressure = ComputePressure(i_density);
+   //         float dist = sqrt(dist_sq);
+   //         force -= normalize(res) * ComputeGradPressure(dist, pressure, density, i_pressure, i_density);
+   //         force += ComputeLapVelocity(dist, velocity, i_velocity, i_density);
+   //     }
+   //}
+   int3 gridCoord = GetGridCellCoord(position);   
+   int3 resolution = gridDimensions;
+   
+   for(int i = -1; i < 2; i++){
+   for(int j = -1; j < 2; j++){
+   for(int k = -1; k < 2; k++){
+       int3 cell = gridCoord + int3(i,j,k); 
+      if(!isInGrid(cell, resolution)) continue;
+      int cellId = GetCellId(cell, resolution);
+      const int size = min(grid[cellId], maxParticlesPerCell);
+      for(int l = 0; l < size; l++){
+            int idx = grid_cells[cellId * maxParticlesPerCell + l];
+            if(idx == index) continue;
+            float3 res = particles_read[idx].position - position;
+            float dist_sq = dot(res,res);
+            if(dist_sq < er_sq && dist_sq > 0 ){
+                float3 i_velocity = particles_read[idx].velocity;
+                float i_density = particlesDensity_read[idx].density;
+                float i_pressure = ComputePressure(i_density);
+                float dist = sqrt(dist_sq);
+                force -= (res / dist) * ComputeGradPressure(dist, pressure, density, i_pressure, i_density);
+                force += ComputeLapVelocity(dist, velocity, i_velocity, i_density);
+            }   
+      }
+   }
+   }    
+   }
+   
+
+   //update
+   force += gravity;
+   particlesForce_write[index].force = force;
+}

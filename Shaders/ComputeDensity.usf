@@ -1,0 +1,89 @@
+#include "/Engine/Private/Common.ush"
+#include "GridHelpers.usf"
+//--------------------------------------------------------------------------------------
+// Structs
+//--------------------------------------------------------------------------------------
+struct Particle{
+    float3 position;
+    float3 velocity;
+};
+struct ParticleForce {
+	float3 force;
+};
+struct ParticleDensity {
+	float density;
+};
+//--------------------------------------------------------------------------------------
+// Buffers
+//--------------------------------------------------------------------------------------
+
+RWStructuredBuffer<Particle> particles_read;
+RWStructuredBuffer<ParticleDensity> particlesDensity_write;
+
+RWStructuredBuffer<int> grid;
+RWStructuredBuffer<int> grid_cells;
+
+
+float mass;
+int numParticles;
+float  epsilon;
+float  radious;
+float  poly6Kernel;
+uint   maxParticlesPerCell;
+uint   grid_size;
+int3   gridDimensions;
+
+
+
+float ComputeDensity(float dist_sq, float er_sq ){
+    float x = er_sq - dist_sq;
+    return mass * poly6Kernel * x * x * x;
+}
+
+
+[numthreads(THREADGROUPSIZE_X, THREADGROUPSIZE_Y, THREADGROUPSIZE_Z)]
+void Density(uint3 ThreadId : SV_DispatchThreadID)
+{
+   int index = ThreadId.x;
+   if(index >= numParticles) return;
+   Particle particle = particles_read[index];
+   const float er_sq = radious * radious;
+   float density = 0;
+   float3 position = particle.position;
+   
+
+   
+   //O(n^2) density calculation
+   //for(int i = 0; i < numParticles; i++){
+   //     float3 other = particles_read[i].position;
+   //     float3 res = other - position;
+   //     float dist_sq = dot(res,res);
+   //     if(dist_sq < er_sq){
+   //         density += ComputeDensity(dist_sq,er_sq);
+   //     }
+   //}
+
+   int3 gridCoord = GetGridCellCoord(position);   
+   int3 resolution = gridDimensions;
+  for(int i = -1; i < 2; i++){
+  for(int j = -1; j < 2; j++){
+  for(int k = -1; k < 2; k++){
+     int3 cell = gridCoord + int3(i,j,k); 
+     if(!isInGrid(cell, resolution)) continue;
+     int cellId = GetCellId(cell, resolution);
+     const int size = min(grid[cellId], maxParticlesPerCell);
+     for(int l = 0; l < size; l++){
+           int idx = grid_cells[cellId * maxParticlesPerCell + l];
+           float3 other = particles_read[idx].position;
+           float3 res = other - position;
+           float dist_sq = dot(res,res);
+           if(dist_sq <= er_sq){
+               density += ComputeDensity(dist_sq,er_sq);
+           }
+     }
+  }
+  }    
+  }
+   // Update density
+   particlesDensity_write[index].density = max(density,ComputeDensity(0,er_sq));
+}

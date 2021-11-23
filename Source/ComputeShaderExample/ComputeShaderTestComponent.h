@@ -53,37 +53,22 @@ public:
 		SHADER_PARAMETER_UAV(RWStructuredBuffer<Particle>, particles_write)
 
 		SHADER_PARAMETER_UAV(RWStructuredBuffer<ParticleForce>, particlesForce_read)
-		SHADER_PARAMETER_UAV(RWStructuredBuffer<ParticleForce>, particlesForce_write)
-
 		SHADER_PARAMETER_UAV(RWStructuredBuffer<ParticleDensity>, particlesDensity_read)
-		SHADER_PARAMETER_UAV(RWStructuredBuffer<ParticleDensity>, particlesDensity_write)
+
 
 		SHADER_PARAMETER_UAV(RWStructuredBuffer<float3>, cvf_max)
 		SHADER_PARAMETER_UAV(RWStructuredBuffer<float>, dt_read)
 		SHADER_PARAMETER_UAV(RWStructuredBuffer<float>, dt_write)
 		SHADER_PARAMETER_UAV(RWStructuredBuffer<uint32>, mutex)
-		SHADER_PARAMETER_UAV(RWStructuredBuffer<int>, grid)
-		SHADER_PARAMETER_UAV(RWStructuredBuffer<int>, grid_cells)
 
 
-		SHADER_PARAMETER(float, delta_time)
 		SHADER_PARAMETER(float, mass)
-		SHADER_PARAMETER(FVector, gravity)
+		SHADER_PARAMETER(float, delta_time)
 		SHADER_PARAMETER(int, numParticles)
 		SHADER_PARAMETER(FVector, minBoundary)
 		SHADER_PARAMETER(FVector, maxBoundary)
 		SHADER_PARAMETER(float, damping)
 		SHADER_PARAMETER(float, epsilon)
-		SHADER_PARAMETER(float, radious)
-		SHADER_PARAMETER(float, poly6Kernel)
-		SHADER_PARAMETER(float, spikyKernel)
-		SHADER_PARAMETER(float, lapKernel)
-		SHADER_PARAMETER(float, pressureCoef)
-		SHADER_PARAMETER(float, restDensity)
-		SHADER_PARAMETER(float, viscosity)
-		SHADER_PARAMETER(uint32, maxParticlesPerCell)
-		SHADER_PARAMETER(uint32, grid_size)
-		SHADER_PARAMETER(FIntVector, gridDimensions)
 	END_SHADER_PARAMETER_STRUCT()
 	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) {
 		return GetMaxSupportedFeatureLevel(Parameters.Platform) >= ERHIFeatureLevel::SM5;
@@ -107,41 +92,22 @@ public:
 	/// </summary>
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
 		SHADER_PARAMETER_UAV(RWStructuredBuffer<Particle>, particles_read)
-		SHADER_PARAMETER_UAV(RWStructuredBuffer<Particle>, particles_write)
-
-		SHADER_PARAMETER_UAV(RWStructuredBuffer<ParticleForce>, particlesForce_read)
-		SHADER_PARAMETER_UAV(RWStructuredBuffer<ParticleForce>, particlesForce_write)
-
-		SHADER_PARAMETER_UAV(RWStructuredBuffer<ParticleDensity>, particlesDensity_read)
 		SHADER_PARAMETER_UAV(RWStructuredBuffer<ParticleDensity>, particlesDensity_write)
 
-		SHADER_PARAMETER_UAV(RWStructuredBuffer<FVector>, cvf_max)
-		SHADER_PARAMETER_UAV(RWStructuredBuffer<float>, dt_read)
-		SHADER_PARAMETER_UAV(RWStructuredBuffer<float>, dt_write)
-		SHADER_PARAMETER_UAV(RWStructuredBuffer<uint32>, mutex)
 		SHADER_PARAMETER_UAV(RWStructuredBuffer<int>, grid)
 		SHADER_PARAMETER_UAV(RWStructuredBuffer<int>, grid_cells)
 
 
-		SHADER_PARAMETER(float, delta_time)
 		SHADER_PARAMETER(float, mass)
-		SHADER_PARAMETER(FVector, gravity)
 		SHADER_PARAMETER(int, numParticles)
-		SHADER_PARAMETER(FVector, minBoundary)
-		SHADER_PARAMETER(FVector, maxBoundary)
-		SHADER_PARAMETER(float, damping)
 		SHADER_PARAMETER(float, epsilon)
 		SHADER_PARAMETER(float, radious)
 		SHADER_PARAMETER(float, poly6Kernel)
-		SHADER_PARAMETER(float, spikyKernel)
-		SHADER_PARAMETER(float, lapKernel)
-		SHADER_PARAMETER(float, pressureCoef)
-		SHADER_PARAMETER(float, restDensity)
-		SHADER_PARAMETER(float, viscosity)
 		SHADER_PARAMETER(uint32, maxParticlesPerCell)
 		SHADER_PARAMETER(uint32, grid_size)
 		SHADER_PARAMETER(FIntVector, gridDimensions)
 		END_SHADER_PARAMETER_STRUCT()
+
 		static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) {
 		return GetMaxSupportedFeatureLevel(Parameters.Platform) >= ERHIFeatureLevel::SM5;
 	};
@@ -164,33 +130,18 @@ public:
 	/// </summary>
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
 		SHADER_PARAMETER_UAV(RWStructuredBuffer<Particle>, particles_read)
-		SHADER_PARAMETER_UAV(RWStructuredBuffer<Particle>, particles_write)
-
-		SHADER_PARAMETER_UAV(RWStructuredBuffer<ParticleForce>, particlesForce_read)
 		SHADER_PARAMETER_UAV(RWStructuredBuffer<ParticleForce>, particlesForce_write)
-
 		SHADER_PARAMETER_UAV(RWStructuredBuffer<ParticleDensity>, particlesDensity_read)
-		SHADER_PARAMETER_UAV(RWStructuredBuffer<ParticleDensity>, particlesDensity_write)
 
-		SHADER_PARAMETER_UAV(RWStructuredBuffer<FVector>, cvf_max)
-		SHADER_PARAMETER_UAV(RWStructuredBuffer<float>, dt_read)
-		SHADER_PARAMETER_UAV(RWStructuredBuffer<float>, dt_write)
-		SHADER_PARAMETER_UAV(RWStructuredBuffer<uint32>, mutex)
 
 		SHADER_PARAMETER_UAV(RWStructuredBuffer<int>, grid)
 		SHADER_PARAMETER_UAV(RWStructuredBuffer<int>, grid_cells)
 
-
-		SHADER_PARAMETER(float, delta_time)
 		SHADER_PARAMETER(float, mass)
 		SHADER_PARAMETER(FVector, gravity)
 		SHADER_PARAMETER(int, numParticles)
-		SHADER_PARAMETER(FVector, minBoundary)
-		SHADER_PARAMETER(FVector, maxBoundary)
-		SHADER_PARAMETER(float, damping)
 		SHADER_PARAMETER(float, epsilon)
 		SHADER_PARAMETER(float, radious)
-		SHADER_PARAMETER(float, poly6Kernel)
 		SHADER_PARAMETER(float, spikyKernel)
 		SHADER_PARAMETER(float, lapKernel)
 		SHADER_PARAMETER(float, pressureCoef)
@@ -200,6 +151,9 @@ public:
 		SHADER_PARAMETER(uint32, grid_size)
 		SHADER_PARAMETER(FIntVector, gridDimensions)
 		END_SHADER_PARAMETER_STRUCT()
+
+
+
 		static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) {
 		return GetMaxSupportedFeatureLevel(Parameters.Platform) >= ERHIFeatureLevel::SM5;
 	};
@@ -284,41 +238,21 @@ public:
 		SHADER_PARAMETER_UAV(RWStructuredBuffer<Particle>, particles_read)
 		SHADER_PARAMETER_UAV(RWStructuredBuffer<Particle>, particles_write)
 
-		SHADER_PARAMETER_UAV(RWStructuredBuffer<ParticleForce>, particlesForce_read)
-		SHADER_PARAMETER_UAV(RWStructuredBuffer<ParticleForce>, particlesForce_write)
-
-		SHADER_PARAMETER_UAV(RWStructuredBuffer<ParticleDensity>, particlesDensity_read)
-		SHADER_PARAMETER_UAV(RWStructuredBuffer<ParticleDensity>, particlesDensity_write)
-
-		SHADER_PARAMETER_UAV(RWStructuredBuffer<FVector>, cvf_max)
-		SHADER_PARAMETER_UAV(RWStructuredBuffer<float>, dt_read)
-		SHADER_PARAMETER_UAV(RWStructuredBuffer<float>, dt_write)
-		SHADER_PARAMETER_UAV(RWStructuredBuffer<uint32>, mutex)
-
 		SHADER_PARAMETER_UAV(RWStructuredBuffer<int>, grid)
 		SHADER_PARAMETER_UAV(RWStructuredBuffer<int>, grid_cells)
 
 
 
-		SHADER_PARAMETER(float, delta_time)
-		SHADER_PARAMETER(float, mass)
-		SHADER_PARAMETER(FVector, gravity)
+
+		SHADER_PARAMETER(float, radious)
 		SHADER_PARAMETER(int, numParticles)
 		SHADER_PARAMETER(FVector, minBoundary)
 		SHADER_PARAMETER(FVector, maxBoundary)
-		SHADER_PARAMETER(float, damping)
-		SHADER_PARAMETER(float, epsilon)
-		SHADER_PARAMETER(float, radious)
-		SHADER_PARAMETER(float, poly6Kernel)
-		SHADER_PARAMETER(float, spikyKernel)
-		SHADER_PARAMETER(float, lapKernel)
-		SHADER_PARAMETER(float, pressureCoef)
-		SHADER_PARAMETER(float, restDensity)
-		SHADER_PARAMETER(float, viscosity)
 		SHADER_PARAMETER(uint32, maxParticlesPerCell)
 		SHADER_PARAMETER(uint32, grid_size)
 		SHADER_PARAMETER(FIntVector, gridDimensions)
 		END_SHADER_PARAMETER_STRUCT()
+
 		static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) {
 		return GetMaxSupportedFeatureLevel(Parameters.Platform) >= ERHIFeatureLevel::SM5;
 	};
@@ -343,42 +277,18 @@ public:
 		SHADER_PARAMETER_UAV(RWStructuredBuffer<Particle>, particles_read)
 		SHADER_PARAMETER_UAV(RWStructuredBuffer<Particle>, particles_write)
 
-		SHADER_PARAMETER_UAV(RWStructuredBuffer<ParticleForce>, particlesForce_read)
-		SHADER_PARAMETER_UAV(RWStructuredBuffer<ParticleForce>, particlesForce_write)
-
-		SHADER_PARAMETER_UAV(RWStructuredBuffer<ParticleDensity>, particlesDensity_read)
-		SHADER_PARAMETER_UAV(RWStructuredBuffer<ParticleDensity>, particlesDensity_write)
-
-		SHADER_PARAMETER_UAV(RWStructuredBuffer<FVector>, cvf_max)
-		SHADER_PARAMETER_UAV(RWStructuredBuffer<float>, dt_read)
-		SHADER_PARAMETER_UAV(RWStructuredBuffer<float>, dt_write)
-		SHADER_PARAMETER_UAV(RWStructuredBuffer<uint32>, mutex)
-
-
 		SHADER_PARAMETER_UAV(RWStructuredBuffer<int>, grid)
 		SHADER_PARAMETER_UAV(RWStructuredBuffer<int>, grid_cells)
 
 
 
-		SHADER_PARAMETER(float, delta_time)
-		SHADER_PARAMETER(float, mass)
-		SHADER_PARAMETER(FVector, gravity)
+		SHADER_PARAMETER(float, radious)
 		SHADER_PARAMETER(int, numParticles)
 		SHADER_PARAMETER(FVector, minBoundary)
 		SHADER_PARAMETER(FVector, maxBoundary)
-		SHADER_PARAMETER(float, damping)
-		SHADER_PARAMETER(float, epsilon)
-		SHADER_PARAMETER(float, radious)
-		SHADER_PARAMETER(float, poly6Kernel)
-		SHADER_PARAMETER(float, spikyKernel)
-		SHADER_PARAMETER(float, lapKernel)
-		SHADER_PARAMETER(float, pressureCoef)
-		SHADER_PARAMETER(float, restDensity)
-		SHADER_PARAMETER(float, viscosity)
 		SHADER_PARAMETER(uint32, maxParticlesPerCell)
 		SHADER_PARAMETER(uint32, grid_size)
 		SHADER_PARAMETER(FIntVector, gridDimensions)
-
 
 		END_SHADER_PARAMETER_STRUCT()
 		static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) {
