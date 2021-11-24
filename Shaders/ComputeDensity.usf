@@ -30,9 +30,8 @@ float  epsilon;
 float  radious;
 float  poly6Kernel;
 uint   maxParticlesPerCell;
-uint   grid_size;
 int3   gridDimensions;
-
+float3 minBoundary;
 
 
 float ComputeDensity(float dist_sq, float er_sq ){
@@ -63,27 +62,27 @@ void Density(uint3 ThreadId : SV_DispatchThreadID)
    //     }
    //}
 
-   int3 gridCoord = GetGridCellCoord(position);   
-   int3 resolution = gridDimensions;
+  int3 gridCoord = GetGridCellCoord(position, minBoundary, radious);   
   for(int i = -1; i < 2; i++){
-  for(int j = -1; j < 2; j++){
-  for(int k = -1; k < 2; k++){
-     int3 cell = gridCoord + int3(i,j,k); 
-     if(!isInGrid(cell, resolution)) continue;
-     int cellId = GetCellId(cell, resolution);
-     const int size = min(grid[cellId], maxParticlesPerCell);
-     for(int l = 0; l < size; l++){
-           int idx = grid_cells[cellId * maxParticlesPerCell + l];
-           float3 other = particles_read[idx].position;
-           float3 res = other - position;
-           float dist_sq = dot(res,res);
-           if(dist_sq <= er_sq){
-               density += ComputeDensity(dist_sq,er_sq);
+    for(int j = -1; j < 2; j++){
+        for(int k = -1; k < 2; k++){
+           int3 cell = gridCoord + int3(i,j,k); 
+           if(!isInGrid(cell, gridDimensions))
+              continue;
+           int cellId = GetCellId(cell, gridDimensions);
+           const int size = min(grid[cellId], maxParticlesPerCell);
+           for(int l = 0; l < size; l++){
+                 int idx = grid_cells[cellId * maxParticlesPerCell + l];
+                 float3 other = particles_read[idx].position;
+                 float3 res = other - position;
+                 float dist_sq = dot(res,res);
+                 if(dist_sq <= er_sq){
+                     density += ComputeDensity(dist_sq,er_sq);
+                 }
            }
-     }
-  }
-  }    
+        }
+    }    
   }
    // Update density
-   particlesDensity_write[index].density = max(density,ComputeDensity(0,er_sq));
+   particlesDensity_write[index].density = density;
 }

@@ -55,13 +55,6 @@ public:
 		SHADER_PARAMETER_UAV(RWStructuredBuffer<ParticleForce>, particlesForce_read)
 		SHADER_PARAMETER_UAV(RWStructuredBuffer<ParticleDensity>, particlesDensity_read)
 
-
-		SHADER_PARAMETER_UAV(RWStructuredBuffer<float3>, cvf_max)
-		SHADER_PARAMETER_UAV(RWStructuredBuffer<float>, dt_read)
-		SHADER_PARAMETER_UAV(RWStructuredBuffer<float>, dt_write)
-		SHADER_PARAMETER_UAV(RWStructuredBuffer<uint32>, mutex)
-
-
 		SHADER_PARAMETER(float, mass)
 		SHADER_PARAMETER(float, delta_time)
 		SHADER_PARAMETER(int, numParticles)
@@ -104,8 +97,9 @@ public:
 		SHADER_PARAMETER(float, radious)
 		SHADER_PARAMETER(float, poly6Kernel)
 		SHADER_PARAMETER(uint32, maxParticlesPerCell)
-		SHADER_PARAMETER(uint32, grid_size)
 		SHADER_PARAMETER(FIntVector, gridDimensions)
+		SHADER_PARAMETER(FVector, minBoundary)
+
 		END_SHADER_PARAMETER_STRUCT()
 
 		static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) {
@@ -148,8 +142,8 @@ public:
 		SHADER_PARAMETER(float, restDensity)
 		SHADER_PARAMETER(float, viscosity)
 		SHADER_PARAMETER(uint32, maxParticlesPerCell)
-		SHADER_PARAMETER(uint32, grid_size)
 		SHADER_PARAMETER(FIntVector, gridDimensions)
+		SHADER_PARAMETER(FVector, minBoundary)
 		END_SHADER_PARAMETER_STRUCT()
 
 
@@ -176,43 +170,15 @@ public:
 	/// </summary>
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
 		SHADER_PARAMETER_UAV(RWStructuredBuffer<Particle>, particles_read)
-		SHADER_PARAMETER_UAV(RWStructuredBuffer<Particle>, particles_write)
-
 		SHADER_PARAMETER_UAV(RWStructuredBuffer<ParticleForce>, particlesForce_read)
-		SHADER_PARAMETER_UAV(RWStructuredBuffer<ParticleForce>, particlesForce_write)
-
 		SHADER_PARAMETER_UAV(RWStructuredBuffer<ParticleDensity>, particlesDensity_read)
-		SHADER_PARAMETER_UAV(RWStructuredBuffer<ParticleDensity>, particlesDensity_write)
-
 		SHADER_PARAMETER_UAV(RWStructuredBuffer<FVector>, cvf_max)
-		SHADER_PARAMETER_UAV(RWStructuredBuffer<float>, dt_read)
-		SHADER_PARAMETER_UAV(RWStructuredBuffer<float>, dt_write)
 		SHADER_PARAMETER_UAV(RWStructuredBuffer<uint32>, mutex)
 
-
-		SHADER_PARAMETER_UAV(RWStructuredBuffer<int>, grid)
-		SHADER_PARAMETER_UAV(RWStructuredBuffer<int>, grid_cells)
-
-
-
-		SHADER_PARAMETER(float, delta_time)
-		SHADER_PARAMETER(float, mass)
-		SHADER_PARAMETER(FVector, gravity)
 		SHADER_PARAMETER(int, numParticles)
-		SHADER_PARAMETER(FVector, minBoundary)
-		SHADER_PARAMETER(FVector, maxBoundary)
-		SHADER_PARAMETER(float, damping)
-		SHADER_PARAMETER(float, epsilon)
-		SHADER_PARAMETER(float, radious)
-		SHADER_PARAMETER(float, poly6Kernel)
-		SHADER_PARAMETER(float, spikyKernel)
-		SHADER_PARAMETER(float, lapKernel)
 		SHADER_PARAMETER(float, pressureCoef)
 		SHADER_PARAMETER(float, restDensity)
-		SHADER_PARAMETER(float, viscosity)
-		SHADER_PARAMETER(uint32, maxParticlesPerCell)
-		SHADER_PARAMETER(uint32, grid_size)
-		SHADER_PARAMETER(FIntVector, gridDimensions)
+
 		END_SHADER_PARAMETER_STRUCT()
 	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) {
 		return GetMaxSupportedFeatureLevel(Parameters.Platform) >= ERHIFeatureLevel::SM5;
@@ -339,7 +305,9 @@ public:
 	//
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		int numBoids = 1000;
-	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+		int maxBoids = 1000;
+
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		float timeStep = 0.0013f;
@@ -381,12 +349,23 @@ protected:
 		FStructuredBufferRHIRef Buffer;
 		FUnorderedAccessViewRHIRef BufferUAV;
 	};
-	GPUBuffer buffers[2];
-	GPUBuffer force_buffers[2];
-	GPUBuffer density_buffers[2];
-	GPUBuffer dt_buffers[2];
-	GPUBuffer grid_buffers[2];
-	GPUBuffer grid_cells_buffers[2];
+	//GPUBuffer buffers[2];
+	//GPUBuffer force_buffers[2];
+	//GPUBuffer density_buffers[2];
+	//GPUBuffer dt_buffers[2];
+	//GPUBuffer grid_buffers[2];
+	//GPUBuffer grid_cells_buffers[2];
+
+	struct Frame {
+		GPUBuffer paricle_buffers;
+		GPUBuffer force_buffers;
+		GPUBuffer density_buffers;
+		GPUBuffer dt_buffers;
+		GPUBuffer grid_buffers;
+		GPUBuffer grid_cells_buffers;
+	};
+	Frame frames[2];
+	int current_frame = 0;
 
 	GPUBuffer cvf_buffer;
 	GPUBuffer mutex_buffer;

@@ -1,0 +1,93 @@
+#include "/Engine/Private/Common.ush"
+
+//--------------------------------------------------------------------------------------
+// Structs
+//--------------------------------------------------------------------------------------
+struct Particle{
+    float3 position;
+    float3 velocity;
+};
+struct ParticleForce {
+	float3 force;
+};
+struct ParticleDensity {
+	float density;
+};
+//--------------------------------------------------------------------------------------
+// Buffers
+//--------------------------------------------------------------------------------------
+
+RWStructuredBuffer<Particle> particles_read;
+RWStructuredBuffer<ParticleForce> particlesForce_read;
+RWStructuredBuffer<ParticleDensity> particlesDensity_read;
+
+RWStructuredBuffer<float3> cvf_max;
+RWStructuredBuffer<uint> mutex;
+
+int numParticles;
+float pressureCoef;
+float restDensity;
+
+void Lock(){
+    uint org = 0;
+    while(org != 0){    
+        InterlockedCompareExchange(mutex[0],0,1,org);
+    }
+}
+void Unlock(){
+    uint org;
+    InterlockedExchange(mutex[0], 0, org);
+}
+float ComputePressure(float density){
+   return pressureCoef * (density - restDensity);
+}
+
+float evaluateSpeedOfSoundSquared(float pressure,float density) {
+
+    return 1.0f*(pressure) / density;
+}
+groupshared float3 cache[THREADGROUPSIZE_X * THREADGROUPSIZE_Y * THREADGROUPSIZE_Z * 2];
+[numthreads(THREADGROUPSIZE_X, THREADGROUPSIZE_Y, THREADGROUPSIZE_Z)]
+void DeltaTimeReduction(uint3 Gid : SV_GroupID, //atm: -, 0...256, - in rows (Y)        --> current group index (dispatched by c++)
+                       uint3 ThreadId : SV_DispatchThreadID, //atm: 0...256 in rows & columns (XY)   --> "global" thread id
+                       uint3 GTid : SV_GroupThreadID, //atm: 0...256, -,- in columns (X)      --> current threadId in group / "local" threadId
+                       uint GI : SV_GroupIndex)
+{
+
+    int index = min(numParticles-1,ThreadId.x);
+    int cacheIdx = GTid.x;
+    float density = particlesDensity_read[index].density;
+    float pressure =  ComputePressure(density);
+    float gamma = 1.0f;
+    float3 velocity = particles_read[index].velocity;
+    float3 force = particlesForce_read[index].force;
+    
+    
+    float vel_max = dot(velocity,velocity);
+    float force_max = dot(force, force);
+    float c_max = evaluateSpeedOfSoundSquared(pressure, density);
+    
+    cache[cacheIdx] = float3(c_max, vel_max, force_max);
+    GroupMemoryBarrierWithGroupSync();
+    
+    int step = numParticles >> 1;
+    while( step != 0 ) {
+      if(cacheIdx < step){
+        cache[cacheIdx].x = max(cache[cacheIdx].x, cache[cacheIdx + step].x);
+        cache[cacheIdx].y = max(cache[cacheIdx].y, cache[cacheIdx + step].y);
+        cache[cacheIdx].z = max(cache[cacheIdx].z, cache[cacheIdx + step].z);
+      }
+      GroupMemoryBarrierWithGroupSync();
+      step = step >> 1; 
+    }
+    
+    if(cacheIdx == 0){
+        Lock();
+        cvf_max[0].x = max(cache[0].x, cvf_max[0].x);
+        cvf_max[0].y = max(cache[0].y, cvf_max[0].y);
+        cvf_max[0].z = max(cache[0].z, cvf_max[0].z);
+        Unlock();
+    }
+
+
+}

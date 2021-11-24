@@ -44,7 +44,7 @@ void CreateGrid(uint3 ThreadId : SV_DispatchThreadID)
    if(tid >= numParticles)
         return;
 
-   const int cellId = GetCellId(GetGridCellCoord(particles_read[tid].position), gridDimensions);
+   const int cellId = GetCellId(GetGridCellCoord(particles_read[tid].position, minBoundary, radious), gridDimensions);
    int idx = 0;
    InterlockedAdd(grid[cellId], 1, idx);
    if(idx >= maxParticlesPerCell){

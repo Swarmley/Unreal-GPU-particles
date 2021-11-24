@@ -58,8 +58,8 @@ void UDrawPositionsComponent::_updateInstanceTransforms()
 	TArray<Particle>& particles = boidsComponent->outputParticles;
 	
 	// resize up/down the ismc
-	int toAdd = FMath::Max(0, particles.Num() - ismc->GetInstanceCount());
-	int toRemove = FMath::Max(0, ismc->GetInstanceCount() - particles.Num());
+	int toAdd = FMath::Max(0, boidsComponent->numBoids - ismc->GetInstanceCount());
+	int toRemove = FMath::Max(0, ismc->GetInstanceCount() - boidsComponent->numBoids);
 
 	for (int i = 0; i < toAdd; ++i)
 		ismc->AddInstance(FTransform::Identity);
@@ -67,9 +67,9 @@ void UDrawPositionsComponent::_updateInstanceTransforms()
 		ismc->RemoveInstance(ismc->GetInstanceCount() - 1);
 
 	// update the transforms
-	_instanceTransforms.SetNum(particles.Num());
+	_instanceTransforms.SetNum(boidsComponent->numBoids);
 
-	for (int i = 0; i < particles.Num(); ++i)
+	for (int i = 0; i < boidsComponent->numBoids; ++i)
 	{
 		FTransform& transform = _instanceTransforms[i];
 		transform.SetTranslation(particles[i].position);

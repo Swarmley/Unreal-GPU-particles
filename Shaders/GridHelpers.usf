@@ -1,7 +1,6 @@
 
-int3 GetGridCellCoord(float3 coord){
-    //float cell_size= CellSize();
-    return int3(coord);
+int3 GetGridCellCoord(float3 coord, float3 start, float cellSize){
+    return int3(floor((coord - start)/cellSize));
 }
 bool isInGrid(int3 coord, int3 resolution){
     return coord.x >= 0 && coord.y >= 0 && coord.z >= 0 && coord.x < resolution.x && coord.y < resolution.y && coord.z < resolution.z; 

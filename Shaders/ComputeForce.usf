@@ -36,9 +36,8 @@ float  pressureCoef;
 float  restDensity;
 float  viscosity;
 uint   maxParticlesPerCell;
-uint   grid_size;
 int3   gridDimensions;
-
+float3 minBoundary;
 
 
 float ComputePressure(float density){
@@ -94,7 +93,8 @@ void Force(uint3 ThreadId : SV_DispatchThreadID)
    //         force += ComputeLapVelocity(dist, velocity, i_velocity, i_density);
    //     }
    //}
-   int3 gridCoord = GetGridCellCoord(position);   
+
+   int3 gridCoord = GetGridCellCoord(position, minBoundary, radious);   
    int3 resolution = gridDimensions;
    
    for(int i = -1; i < 2; i++){
