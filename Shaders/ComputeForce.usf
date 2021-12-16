@@ -41,7 +41,6 @@ float3 minBoundary;
 
 
 float ComputePressure(float density){
-   //density = max(density, restDensity);
    return pressureCoef * (density - restDensity);
 }
 

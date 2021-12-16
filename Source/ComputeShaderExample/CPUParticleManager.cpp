@@ -3,6 +3,8 @@
 
 #include "CPUParticleManager.h"
 #include "DrawBoundaryComponent.h"
+#include "ParticleGeneratorBoundsComponent.h"
+DECLARE_STATS_GROUP(TEXT("LODZERO_Game"), STATGROUP_LODZERO, STATCAT_Advanced);
 // Sets default values
 ACPUParticleManager::ACPUParticleManager()
 {
@@ -16,12 +18,14 @@ void ACPUParticleManager::BeginPlay()
 {
 	Super::BeginPlay();
 	initIsmc();
-	auto box = FindComponentByClass<UDrawBoundaryComponent>()->Bounds.GetBox();
 	auto loc = GetActorLocation();
+	{
+		auto box = FindComponentByClass<UDrawBoundaryComponent>()->Bounds.GetBox();
 
-	minBoundary = box.Min - loc;
-	maxBoundary = box.Max - loc;
 
+		minBoundary = box.Min - loc;
+		maxBoundary = box.Max - loc;
+	}
 
 	FVector resolution = (maxBoundary - minBoundary) / (effective_radious);
 	grid_dimensions = FIntVector(ceil(resolution.X), ceil(resolution.Y), ceil(resolution.Z));
@@ -42,36 +46,46 @@ void ACPUParticleManager::BeginPlay()
 		GridTracker.Init(0, grid_size);
 		GridCells.Init(0, grid_size * maxParticlesPerCell);
 	}
-	int counter = 0;
-	for (int z = 0; z < grid_dimensions.Z && counter < numBoids; z++) {
-		for (int y = 0; y < grid_dimensions.Y && counter < numBoids; y++) {
-			for (int x = 0; x < grid_dimensions.X && counter < numBoids; x++) {
-				FVector position = FVector(maxBoundary.X - 1, maxBoundary.Y - 1, maxBoundary.Z - 1) - FVector(x / 2.f, y / 2.f, z / 2.f) - FVector(rng.RandRange(effective_radious, effective_radious + 0.1), rng.RandRange(effective_radious, effective_radious + 0.1), rng.RandRange(effective_radious, effective_radious + 0.1));
-				int idx = z * grid_dimensions.X * grid_dimensions.Y + y * grid_dimensions.X + x;
-				particles[idx].position = position;
-				particles[idx].velocity = startVelocity;
-				counter++;
-			}
-		}
+	FIntVector gen_dimensions = grid_dimensions;
+	FVector gen_max = maxBoundary;
+
+	//UParticleGeneratorBoundsComponent* gen = GetOwner()->FindComponentByClass<UParticleGeneratorBoundsComponent>();
+	//if (gen) {
+	//	auto box = gen->Bounds.GetBox();
+	//	gen_max = box.Max - loc;
+	//	gen_dimensions = FIntVector(ceil(box.Max.X - box.Min.X), ceil(box.Max.Y - box.Min.Y), ceil(box.Max.Z - box.Min.Z));
+	//}
+
+	for (int i = 0; i < numBoids; i++) {
+		int counter = i;
+		int z = (counter / (gen_dimensions.Y * gen_dimensions.X)) % gen_dimensions.Z;
+		int y = (counter / gen_dimensions.X) % gen_dimensions.Y;
+		int x = counter % gen_dimensions.X;
+		FVector position = FVector(gen_max.X - 1, gen_max.Y - 1, gen_max.Z - 1) - FVector(x, y, z);
+		particles[counter].position = position;
+		particles[counter].velocity = startVelocity + FVector(rng.RandRange(-1, 1), rng.RandRange(-1, 1), rng.RandRange(-1, 1));
 	}
 
 
 
 
 }
-
+DECLARE_CYCLE_STAT(TEXT("Tick"), STAT_CPUParticleManger_Tick, STATGROUP_LODZERO);
 // Called every frame
 void ACPUParticleManager::Tick(float DeltaTime)
 {
-	Super::Tick(DeltaTime);
-	poly6Kernel = 315.f / (65.f * PI * pow(effective_radious, 9.f));
-	spikyKernel = -45.f / (PI * pow(effective_radious, 6.f));
-	lapKernel = 45.f / (PI * pow(effective_radious, 6.f));
-	gravityForce = gravity * 2000.f;
-	recomputeGrid();
-	computeDensity();
-	computeForces();
-	integrate();
+	{
+		SCOPE_CYCLE_COUNTER(STAT_CPUParticleManger_Tick);
+		Super::Tick(DeltaTime);
+		poly6Kernel = 315.f / (65.f * PI * pow(effective_radious, 9.f));
+		spikyKernel = -45.f / (PI * pow(effective_radious, 6.f));
+		lapKernel = 45.f / (PI * pow(effective_radious, 6.f));
+		gravityForce = gravity * 2000.f;
+		recomputeGrid();
+		computeDensity();
+		computeForces();
+		integrate();
+	}
 	draw();
 }
 
@@ -105,9 +119,10 @@ float ACPUParticleManager::ComputeDensity(float dist_sq, float er_sq)
 	float x = er_sq - dist_sq;
 	return mass * poly6Kernel * x * x * x;
 }
-
+DECLARE_CYCLE_STAT(TEXT("recomputeGrid"), STAT_CPUParticleManger_recomputeGrid, STATGROUP_LODZERO);
 void ACPUParticleManager::recomputeGrid()
 {
+	SCOPE_CYCLE_COUNTER(STAT_CPUParticleManger_recomputeGrid);
 	memset(GridTracker.GetData(),0, GridTracker.Num());
 
 	for (int i = 0;  i < numBoids; i++) {
@@ -119,9 +134,10 @@ void ACPUParticleManager::recomputeGrid()
 		}
 	}
 }
-
+DECLARE_CYCLE_STAT(TEXT("computeForces"), STAT_CPUParticleManger_computeForces, STATGROUP_LODZERO);
 void ACPUParticleManager::computeForces()
 {
+	SCOPE_CYCLE_COUNTER(STAT_CPUParticleManger_computeForces);
 	for (int index = 0; index < numBoids; index++) {
 		Particle p1 = particles[index];
 		FVector position = particles[index].position;
@@ -162,9 +178,10 @@ void ACPUParticleManager::computeForces()
 		forces[index].force = force;
 	}
 }
-
+DECLARE_CYCLE_STAT(TEXT("computeDensity"), STAT_CPUParticleMangercomputeDensity, STATGROUP_LODZERO);
 void ACPUParticleManager::computeDensity()
 {
+	SCOPE_CYCLE_COUNTER(STAT_CPUParticleMangercomputeDensity);
 	for (int index = 0; index < numBoids; index++) {
 		Particle p1 = particles[index];
 		const float er_sq = effective_radious * effective_radious;
@@ -199,9 +216,11 @@ void ACPUParticleManager::computeDensity()
 
 
 }
-
+DECLARE_CYCLE_STAT(TEXT("integrate"), STAT_CPUParticleManger_integrate, STATGROUP_LODZERO);
 void ACPUParticleManager::integrate()
 {
+
+	SCOPE_CYCLE_COUNTER(STAT_CPUParticleManger_integrate);
 	for (int index = 0; index < numBoids; index++) {
 		Particle& p = particles[index];
 		FVector position = p.position;
@@ -211,7 +230,7 @@ void ACPUParticleManager::integrate()
 		FVector force = forces[index].force;
 
 		FVector acceleration = FVector(0, 0, 0);
-		acceleration += force / mass;
+		acceleration += force;
 
 		velocity += acceleration * timeStep;
 		position += velocity * timeStep;

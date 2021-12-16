@@ -145,9 +145,6 @@ public:
 		SHADER_PARAMETER(FIntVector, gridDimensions)
 		SHADER_PARAMETER(FVector, minBoundary)
 		END_SHADER_PARAMETER_STRUCT()
-
-
-
 		static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) {
 		return GetMaxSupportedFeatureLevel(Parameters.Platform) >= ERHIFeatureLevel::SM5;
 	};
@@ -282,12 +279,7 @@ protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
 
-	//int numBoids = 1000;
-	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boundary")
-		FVector minBoundary = FVector::ZeroVector;
-	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Boundary")
-		FVector maxBoundary = { 10,10,10 };
-
+	
 public:
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
@@ -295,50 +287,37 @@ public:
 
 
 public:
-	
-	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="placement")
-	//	int width = 32;
-	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "placement")
-	//	int height = 32;
-	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "placement")
-	//	int depth = 32;
-	//
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Particle Generation")
 		int numBoids = 1000;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Particle Generation")
 		int maxBoids = 1000;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite,Category = "Particle Generation")
+		bool addParticles = true;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Particle Generation")
+		int throughput = 100;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Particle Generation")
+		FVector	 startVelocity = { 0,0,0 };
 
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Parameters")
 		float timeStep = 0.0013f;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	float mass = 0.0002;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Parameters")
+		float mass = 0.0002;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Parameters")
 		FVector gravity = { 0.f, 0.f, -9.81f };
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	float damping = -0.37f;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	float effective_radious = 90.f;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Parameters")
+		float damping = -0.37f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Parameters")
+		float effective_radious = 90.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Parameters")
 		float viscosity = 0.1f;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Parameters")
 		float pressure_coef = 200.f;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Parameters")
 		float rest_density = 1000.f;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		FVector	 startVelocity = {0,0,0};
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		 int	maxParticlesPerCell = 500;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Simulation Parameters")
+		 int maxParticlesPerCell = 500;
 
-	//UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	TArray<Particle> outputParticles;
-	TArray<ParticleForce> outputForces;
-	TArray<ParticleDensity> outputDensities;
-	int grid_size;
-	FIntVector grid_dimensions;
-	TArray<int> debugGrid;
-	TArray<int> debugGridCells;
-
 protected:
 
 	enum {
@@ -349,20 +328,13 @@ protected:
 		FStructuredBufferRHIRef Buffer;
 		FUnorderedAccessViewRHIRef BufferUAV;
 	};
-	//GPUBuffer buffers[2];
-	//GPUBuffer force_buffers[2];
-	//GPUBuffer density_buffers[2];
-	//GPUBuffer dt_buffers[2];
-	//GPUBuffer grid_buffers[2];
-	//GPUBuffer grid_cells_buffers[2];
-
 	struct Frame {
-		GPUBuffer paricle_buffers;
-		GPUBuffer force_buffers;
-		GPUBuffer density_buffers;
-		GPUBuffer dt_buffers;
-		GPUBuffer grid_buffers;
-		GPUBuffer grid_cells_buffers;
+		GPUBuffer paricle;
+		GPUBuffer force;
+		GPUBuffer density;
+		GPUBuffer dt;
+		GPUBuffer grid_tracker;
+		GPUBuffer grid_cells;
 	};
 	Frame frames[2];
 	int current_frame = 0;
@@ -370,7 +342,9 @@ protected:
 	GPUBuffer cvf_buffer;
 	GPUBuffer mutex_buffer;
 
+	FVector minBoundary = FVector::ZeroVector;
+	FVector maxBoundary = { 10,10,10 };
 
-	//FStructuredBufferRHIRef _particleBuffer;
-	//FUnorderedAccessViewRHIRef _particleBufferUAV;
+	int grid_size;
+	FIntVector grid_dimensions;
 };

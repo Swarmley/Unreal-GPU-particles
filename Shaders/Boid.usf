@@ -53,7 +53,7 @@ void MainComputeShader(uint3 Gid : SV_GroupID, //atm: -, 0...256, - in rows (Y) 
     float3 force = particlesForce_read[index].force;
 
     float3 acceleration = float3(0,0,0);
-    acceleration +=  force / mass;
+    acceleration +=  force;
 
     velocity += acceleration * delta_time;
     position += velocity * delta_time;
@@ -68,8 +68,6 @@ void MainComputeShader(uint3 Gid : SV_GroupID, //atm: -, 0...256, - in rows (Y) 
         velocity.x *= damping;
         position.x  = maxBoundary.x - epsilon - 1;
     }
-
-
     if(position.y - epsilon < minBoundary.y){
         velocity.y *= damping;
         position.y  = minBoundary.y + epsilon;
