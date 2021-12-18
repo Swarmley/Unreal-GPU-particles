@@ -329,6 +329,8 @@ protected:
 		FUnorderedAccessViewRHIRef BufferUAV;
 	};
 	struct Frame {
+
+		FComputeFenceRHIRef fence;
 		GPUBuffer paricle;
 		GPUBuffer force;
 		GPUBuffer density;
