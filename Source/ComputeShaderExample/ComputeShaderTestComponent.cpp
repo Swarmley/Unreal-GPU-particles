@@ -154,14 +154,6 @@ void UComputeShaderTestComponent::BeginPlay()
 		frames[Write].grid_cells.Buffer = RHICreateStructuredBuffer(sizeof(int), sizeof(int) * grid_size * maxParticlesPerCell, BUF_UnorderedAccess | BUF_ShaderResource, createInfo_write);
 		frames[Write].grid_cells.BufferUAV = RHICreateUnorderedAccessView(frames[Write].grid_cells.Buffer, false, false);
 	}
-
-	//frames[Write].fence = RHICommands.CreateGPUFence("GPUParticleManager::Fence1");
-	//frames[Read].fence = RHICommands.CreateGPUFence("GPUParticleManager::Fence2");
-
-
-
-
-
 	if (outputParticles.Num() != maxBoids)
 	{
 		const FVector zero(0.0f);
@@ -198,7 +190,6 @@ void UComputeShaderTestComponent::TickComponent(float DeltaTime, ELevelTick Tick
 
 		SCOPED_GPU_STAT(RHICommands, Stat_GPU_UComputeShaderTestComponent_Tick)
 
-
 		Frame last = frames[current_frame];
 		Frame current = frames[(current_frame + 1) % 2];
 		float step = timeStep;
@@ -210,16 +201,6 @@ void UComputeShaderTestComponent::TickComponent(float DeltaTime, ELevelTick Tick
 		minBoundary = box.Min - loc;
 		maxBoundary = box.Max - loc;
 		{
-			RHICommands.TransitionResource(
-				EResourceTransitionAccess::EWritable,
-				EResourceTransitionPipeline::EGfxToCompute,
-				current.grid_cells.BufferUAV
-			);
-			RHICommands.TransitionResource(
-				EResourceTransitionAccess::EWritable,
-				EResourceTransitionPipeline::EGfxToCompute,
-				current.grid_tracker.BufferUAV
-			);
 			//SCOPED_GPU_STAT(RHICommands, Stat_GPU_UComputeShaderTestComponent_ClearGrid)
 			FComputeClearGridDeclaration::FParameters params_clear;
 			params_clear.grid = current.grid_tracker.BufferUAV;
@@ -232,6 +213,11 @@ void UComputeShaderTestComponent::TickComponent(float DeltaTime, ELevelTick Tick
 					cs,
 					params_clear,
 					groupSize(grid_size));
+			RHICommands.TransitionResource(
+				EResourceTransitionAccess::ERWBarrier,
+				EResourceTransitionPipeline::EGfxToCompute,
+				current.grid_tracker.BufferUAV
+			);
 		}
 		{
 			//SCOPED_GPU_STAT(RHICommands, Stat_GPU_UComputeShaderTestComponent_GridCompute)
@@ -254,14 +240,9 @@ void UComputeShaderTestComponent::TickComponent(float DeltaTime, ELevelTick Tick
 				params_grid,
 				groupSize(numBoids));
 			RHICommands.TransitionResource(
-				EResourceTransitionAccess::EReadable,
+				EResourceTransitionAccess::ERWBarrier,
 				EResourceTransitionPipeline::EGfxToCompute,
 				current.grid_cells.BufferUAV
-			);
-			RHICommands.TransitionResource(
-				EResourceTransitionAccess::EReadable,
-				EResourceTransitionPipeline::EGfxToCompute,
-				current.grid_tracker.BufferUAV
 			);
 		}
 
@@ -283,17 +264,12 @@ void UComputeShaderTestComponent::TickComponent(float DeltaTime, ELevelTick Tick
 			FRHIComputeShader* rhiComputeShader = cs.GetComputeShader();
 
 			RHICommands.SetComputeShader(rhiComputeShader);
-			RHICommands.TransitionResource(
-				EResourceTransitionAccess::EWritable,
-				EResourceTransitionPipeline::EGfxToCompute,
-				current.density.BufferUAV
-			);
 			FComputeShaderUtils::Dispatch(RHICommands,
 				cs,
 				params_density,
 				groupSize(numBoids));
 			RHICommands.TransitionResource(
-				EResourceTransitionAccess::EReadable,
+				EResourceTransitionAccess::ERWBarrier,
 				EResourceTransitionPipeline::EGfxToCompute,
 				current.density.BufferUAV
 			);
@@ -322,19 +298,14 @@ void UComputeShaderTestComponent::TickComponent(float DeltaTime, ELevelTick Tick
 			params_force.minBoundary = minBoundary;
 			TShaderMapRef<FComputeForceDeclaration> cs(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
 			FRHIComputeShader* rhiComputeShader = cs.GetComputeShader();
-			RHICommands.TransitionResource(
-				EResourceTransitionAccess::EWritable,
-				EResourceTransitionPipeline::EGfxToCompute,
-				current.force.BufferUAV
-			);
-			RHICommands.SetComputeShader(rhiComputeShader);
 
+			RHICommands.SetComputeShader(rhiComputeShader);
 			FComputeShaderUtils::Dispatch(RHICommands,
 				cs,
 				params_force,
 				groupSize(numBoids));
 			RHICommands.TransitionResource(
-				EResourceTransitionAccess::EReadable,
+				EResourceTransitionAccess::ERWBarrier,
 				EResourceTransitionPipeline::EGfxToCompute,
 				current.force.BufferUAV
 			);
@@ -393,24 +364,18 @@ void UComputeShaderTestComponent::TickComponent(float DeltaTime, ELevelTick Tick
 			TShaderMapRef<FComputeShaderDeclaration> cs(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
 			FRHIComputeShader* rhiComputeShader = cs.GetComputeShader();
 
-			RHICommands.TransitionResource(
-				EResourceTransitionAccess::EWritable,
-				EResourceTransitionPipeline::EGfxToCompute,
-				current.paricle.BufferUAV
-			);
 			RHICommands.SetComputeShader(rhiComputeShader);
 			FComputeShaderUtils::Dispatch(RHICommands,
 				cs,
 				params_integrate,
 				groupSize(numBoids));
 			RHICommands.TransitionResource(
-				EResourceTransitionAccess::EReadable,
+				EResourceTransitionAccess::ERWBarrier,
 				EResourceTransitionPipeline::EGfxToCompute,
 				current.paricle.BufferUAV
 			);
 		}
 
-	
 		uint8* particledata = (uint8*)RHILockStructuredBuffer(current.paricle.Buffer, 0, maxBoids * sizeof(Particle), RLM_ReadOnly);
 		{
 			SCOPE_CYCLE_COUNTER(STAT_GPUParticleManger_Tick);
