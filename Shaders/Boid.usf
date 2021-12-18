@@ -42,7 +42,8 @@ void MainComputeShader(uint3 Gid : SV_GroupID, //atm: -, 0...256, - in rows (Y) 
 {
     
     int index = ThreadId.x;
-    if(index >= numParticles) return;
+    if(index >= numParticles)
+        return;
     Particle particle = particles_read[index];
 
     

@@ -154,8 +154,6 @@ void UComputeShaderTestComponent::BeginPlay()
 		frames[Write].grid_cells.Buffer = RHICreateStructuredBuffer(sizeof(int), sizeof(int) * grid_size * maxParticlesPerCell, BUF_UnorderedAccess | BUF_ShaderResource, createInfo_write);
 		frames[Write].grid_cells.BufferUAV = RHICreateUnorderedAccessView(frames[Write].grid_cells.Buffer, false, false);
 	}
-	frames[Read].fence = RHICommands.CreateGPUFence("GPUParticleManager::Frame_1_Finished");
-	frames[Write].fence = RHICommands.CreateGPUFence("GPUParticleManager::Frame_1_Finished");
 	if (outputParticles.Num() != maxBoids)
 	{
 		const FVector zero(0.0f);
@@ -194,8 +192,6 @@ void UComputeShaderTestComponent::TickComponent(float DeltaTime, ELevelTick Tick
 		Frame last = frames[(current_frame + 1) % 2];
 		Frame current = frames[current_frame];
 
-		bool polled = current.fence->Poll();
-
 		float step = timeStep;
 		const float poly6Kernel = 315.f / (65.f * PI * pow(effective_radious, 9.f));
 		const float spikyKernel = -45.f / (PI * pow(effective_radious, 6.f));
@@ -206,6 +202,7 @@ void UComputeShaderTestComponent::TickComponent(float DeltaTime, ELevelTick Tick
 		maxBoundary = box.Max - loc;
 		SCOPED_GPU_STAT(RHICommands, Stat_GPU_UComputeShaderTestComponent_Tick)
 		SCOPED_DRAW_EVENT(RHICommands, Stat_GPU_UComputeShaderTestComponent_Tick)
+		SCOPE_CYCLE_COUNTER(STAT_GPUParticleManger_Tick);
 
 		{
 			//SCOPED_GPU_STAT(RHICommands, Stat_GPU_UComputeShaderTestComponent_ClearGrid)
@@ -385,11 +382,9 @@ void UComputeShaderTestComponent::TickComponent(float DeltaTime, ELevelTick Tick
 
 		uint8* particledata = (uint8*)RHICommands.LockStructuredBuffer(current.paricle.Buffer, 0, maxBoids * sizeof(Particle), RLM_ReadOnly);
 		{
-			SCOPE_CYCLE_COUNTER(STAT_GPUParticleManger_Tick);
 			FMemory::Memcpy(outputParticles.GetData(), particledata, numBoids * sizeof(Particle));
 		}
 		RHICommands.UnlockStructuredBuffer(current.paricle.Buffer);
-		RHICommands.WriteGPUFence(current.fence);
 		current_frame = (current_frame + 1) % 2;
 	}); 
 }

@@ -330,7 +330,6 @@ protected:
 	};
 	struct Frame {
 
-		FGPUFenceRHIRef fence;
 		GPUBuffer paricle;
 		GPUBuffer force;
 		GPUBuffer density;
