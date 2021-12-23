@@ -21,14 +21,19 @@ protected:
 	virtual void BeginPlay() override;
 
 public:	
-	// Called every frame
+	/// @brief Called every frame
+	/// @param DeltaTime delta time between frames
+	/// @param TickType Type of tick we wish to perform on a level
+	/// @param ThisTickFunction  a funcion we wish to perform in a tick
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		float renderScale = 1.0f;
 
 protected:
+	/// @brief initiates UInstancedStaticMeshComponent
 	void _initISMC();
+	/// @brief copies particle positions into UInstancedStaticMeshComponent
 	void _updateInstanceTransforms();
 
 protected:

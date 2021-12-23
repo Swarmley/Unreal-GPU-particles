@@ -71,7 +71,8 @@ void ACPUParticleManager::BeginPlay()
 
 }
 DECLARE_CYCLE_STAT(TEXT("Tick"), STAT_CPUParticleManger_Tick, STATGROUP_LODZERO);
-// Called every frame
+/// @brief Called every frame
+/// @param DeltaTime time between frames
 void ACPUParticleManager::Tick(float DeltaTime)
 {
 	{
@@ -88,12 +89,20 @@ void ACPUParticleManager::Tick(float DeltaTime)
 	}
 	draw();
 }
-
+/// @brief Computes pressure at a particle
+/// @param density current density of a particle
+/// @return pressure at a particle
 float ACPUParticleManager::ComputePressure(float density)
 {
 	return pressure_coef * (density - rest_density);
 }
 
+/// @brief Computes laplacian velocity term of particles acceleration
+/// @param dist distance between particle and its neighbour
+/// @param velocity current velocity of a particle
+/// @param i_velocity velocity of particle's neighbour
+/// @param i_density density of particle's neighbour
+/// @return laplacian velocity term of particles acceleration
 FVector ACPUParticleManager::ComputeLapVelocity(float dist, FVector velocity, FVector i_velocity, float i_density)
 {
 	FVector vdiff = i_velocity - velocity;
@@ -102,7 +111,13 @@ FVector ACPUParticleManager::ComputeLapVelocity(float dist, FVector velocity, FV
 	float lap = lapKernel * diff;
 	return mass_ratio * viscosity * (1 / i_density) * lap * vdiff;
 }
-
+/// @brief Computes gradiant pressure
+/// @param dist distance between particles
+/// @param pressure particle's pressure
+/// @param density particles's density
+/// @param i_pressure pressure of particles's neighbour
+/// @param i_density density of particles's neighbour
+/// @return gradiant pressure
 float ACPUParticleManager::ComputeGradPressure(float dist, float pressure, float density, float i_pressure, float i_density)
 {
 	float i_density2 = i_density * i_density;
@@ -113,13 +128,17 @@ float ACPUParticleManager::ComputeGradPressure(float dist, float pressure, float
 	float spiky = spikyKernel * diff * diff;
 	return mass_ratio * avgPressure * spiky;
 }
-
+/// @brief Computes density of a particle
+/// @param dist_sq distance squered between two particles
+/// @param er_sq effective radious squared
+/// @return 
 float ACPUParticleManager::ComputeDensity(float dist_sq, float er_sq)
 {
 	float x = er_sq - dist_sq;
 	return mass * poly6Kernel * x * x * x;
 }
 DECLARE_CYCLE_STAT(TEXT("recomputeGrid"), STAT_CPUParticleManger_recomputeGrid, STATGROUP_LODZERO);
+/// @brief Reconstructs acceleration 3d grid
 void ACPUParticleManager::recomputeGrid()
 {
 	SCOPE_CYCLE_COUNTER(STAT_CPUParticleManger_recomputeGrid);
@@ -135,6 +154,7 @@ void ACPUParticleManager::recomputeGrid()
 	}
 }
 DECLARE_CYCLE_STAT(TEXT("computeForces"), STAT_CPUParticleManger_computeForces, STATGROUP_LODZERO);
+/// @brief Computes forces applied to a particles
 void ACPUParticleManager::computeForces()
 {
 	SCOPE_CYCLE_COUNTER(STAT_CPUParticleManger_computeForces);
@@ -179,6 +199,7 @@ void ACPUParticleManager::computeForces()
 	}
 }
 DECLARE_CYCLE_STAT(TEXT("computeDensity"), STAT_CPUParticleMangercomputeDensity, STATGROUP_LODZERO);
+/// @brief Computes densities of all particles in the system
 void ACPUParticleManager::computeDensity()
 {
 	SCOPE_CYCLE_COUNTER(STAT_CPUParticleMangercomputeDensity);
@@ -217,6 +238,7 @@ void ACPUParticleManager::computeDensity()
 
 }
 DECLARE_CYCLE_STAT(TEXT("integrate"), STAT_CPUParticleManger_integrate, STATGROUP_LODZERO);
+// Updates positions and velocities of all particles in the system and enforces simulation's bounds
 void ACPUParticleManager::integrate()
 {
 
@@ -270,7 +292,7 @@ void ACPUParticleManager::integrate()
 
 	}
 }
-
+/// @brief copies particle positions into UInstancedStaticMeshComponent
 void ACPUParticleManager::draw()
 {
 	UInstancedStaticMeshComponent* ismc = FindComponentByClass<UInstancedStaticMeshComponent>();
@@ -300,7 +322,7 @@ void ACPUParticleManager::draw()
 	}
 	ismc->BatchUpdateInstancesTransforms(0, _instanceTransforms, false, true, true);
 }
-
+/// @brief initiates UInstancedStaticMeshComponent
 void ACPUParticleManager::initIsmc()
 {
 	UInstancedStaticMeshComponent* ismc = FindComponentByClass<UInstancedStaticMeshComponent>();

@@ -16,14 +16,6 @@
 #include "ComputeShaderTestComponent.generated.h"
 
 
-//BEGIN_GLOBAL_SHADER_PARAMETER_STRUCT(FBoidPosition, )
-//SHADER_PARAMETER(FVector, position)
-//END_GLOBAL_SHADER_PARAMETER_STRUCT()
-//
-//BEGIN_GLOBAL_SHADER_PARAMETER_STRUCT(FBoidVelocity, )
-//SHADER_PARAMETER(FVector, velocity)
-//END_GLOBAL_SHADER_PARAMETER_STRUCT()
-
 struct Particle {
 	FVector position;
 	FVector velocity;
@@ -276,12 +268,15 @@ public:
 	UComputeShaderTestComponent();
 
 protected:
-	// Called when the game starts
+	/// @brief Called when the game starts
 	virtual void BeginPlay() override;
 
 	
 public:
-	// Called every frame
+	/// @brief Called every frame
+	/// @param DeltaTime delta time between frames
+	/// @param TickType Type of tick we wish to perform on a level
+	/// @param ThisTickFunction  a funcion we wish to perform in a tick
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
 

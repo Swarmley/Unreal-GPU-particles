@@ -16,11 +16,12 @@ public:
 	AGPUParticleManager();
 
 protected:
-	// Called when the game starts or when spawned
+	/// brief Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
 public:	
-	// Called every frame
+	/// @brief Called every frame
+	/// @param DeltaTime delta time between frames
 	virtual void Tick(float DeltaTime) override;
 
 };

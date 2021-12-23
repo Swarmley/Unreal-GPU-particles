@@ -22,15 +22,17 @@ void UDrawPositionsComponent::BeginPlay()
 	_initISMC();
 }
 
-
-// Called every frame
+/// @brief Called every frame
+/// @param DeltaTime delta time between frames
+/// @param TickType Type of tick we wish to perform on a level
+/// @param ThisTickFunction  a funcion we wish to perform in a tick
 void UDrawPositionsComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-
 	_updateInstanceTransforms();
 }
 
+/// @brief initiates UInstancedStaticMeshComponent
 void UDrawPositionsComponent::_initISMC()
 {
 	UInstancedStaticMeshComponent * ismc = GetOwner()->FindComponentByClass<UInstancedStaticMeshComponent>();
@@ -45,6 +47,8 @@ void UDrawPositionsComponent::_initISMC()
 	ismc->SetCollisionProfileName(TEXT("NoCollision"));
 }
 
+
+/// @brief copies particle positions into UInstancedStaticMeshComponent
 void UDrawPositionsComponent::_updateInstanceTransforms()
 {
 	UInstancedStaticMeshComponent * ismc = GetOwner()->FindComponentByClass<UInstancedStaticMeshComponent>();

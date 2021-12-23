@@ -6,7 +6,7 @@
 #include "RHIStaticStates.h"
 #include "DrawBoundaryComponent.h"
 #include "ParticleGeneratorBoundsComponent.h"
-#define NUM_THREADS_PER_GROUP_DIMENSION 256
+#define NUM_THREADS_PER_GROUP_DIMENSION 32
 DECLARE_STATS_GROUP(TEXT("LODZERO_Game"), STATGROUP_LODZERO, STATCAT_Advanced);
 // Sets default values for this component's properties
 UComputeShaderTestComponent::UComputeShaderTestComponent() 
