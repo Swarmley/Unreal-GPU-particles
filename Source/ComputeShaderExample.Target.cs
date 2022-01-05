@@ -10,6 +10,6 @@ public class ComputeShaderExampleTarget : TargetRules
 		Type = TargetType.Game;
 		DefaultBuildSettings = BuildSettingsVersion.V2;
 
-		ExtraModuleNames.AddRange( new string[] { "UnrealGPUBoids" } );
+		ExtraModuleNames.AddRange( new string[] { "ComputeShaderExample" } );
 	}
 }

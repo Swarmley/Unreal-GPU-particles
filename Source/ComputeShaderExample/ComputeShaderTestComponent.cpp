@@ -42,9 +42,6 @@ void UComputeShaderTestComponent::BeginPlay()
 		TResourceArray<Particle> particleResourceArray;
 		TResourceArray<ParticleForce> particleForceResourceArray;
 		TResourceArray<ParticleDensity> particleDensityResourceArray;
-		TResourceArray<float> dt;
-		TResourceArray<FVector> cvf_max;
-		TResourceArray<uint32> mutex;
 		TResourceArray<int> grid;
 		TResourceArray<int> grid_cells;
 		FIntVector gen_dimensions = grid_dimensions;
@@ -66,10 +63,6 @@ void UComputeShaderTestComponent::BeginPlay()
 			particleDensityResourceArray.Init(d, maxBoids);
 			grid.Init(0, grid_size);
 			grid_cells.Init(0, grid_size * maxParticlesPerCell);
-			dt.Init(0, 1);
-			FVector cfv(0);
-			cvf_max.Init(cfv, 1);
-			mutex.Init(0, 1);
 		}
 		for (int i = 0; i < maxBoids; i++) {
 			int counter = i;
@@ -81,10 +74,11 @@ void UComputeShaderTestComponent::BeginPlay()
 			particleResourceArray[counter].velocity = startVelocity +  FVector(rng.RandRange(-1,1), rng.RandRange(-1, 1), rng.RandRange(-1, 1));
 		}
 	{
+		TResourceArray<Particle> particleResourceArray_write = particleResourceArray;
 		FRHIResourceCreateInfo createInfo_read;
 		createInfo_read.ResourceArray = &particleResourceArray;
 		FRHIResourceCreateInfo createInfo_write;
-		createInfo_write.ResourceArray = &particleResourceArray;
+		createInfo_write.ResourceArray = &particleResourceArray_write;
 		frames[Read].paricle.Buffer = RHICreateStructuredBuffer(sizeof(Particle), sizeof(Particle) * maxBoids, BUF_UnorderedAccess | BUF_ShaderResource, createInfo_read);
 		frames[Read].paricle.BufferUAV = RHICreateUnorderedAccessView(frames[Read].paricle.Buffer, false, false);
 
@@ -92,10 +86,11 @@ void UComputeShaderTestComponent::BeginPlay()
 		frames[Write].paricle.BufferUAV = RHICreateUnorderedAccessView(frames[Write].paricle.Buffer, false, false);
 	}
 	{
+		TResourceArray<ParticleForce> particleForceResourceArray_write = particleForceResourceArray;
 		FRHIResourceCreateInfo createInfo_read;
 		createInfo_read.ResourceArray = &particleForceResourceArray;
 		FRHIResourceCreateInfo createInfo_write;
-		createInfo_write.ResourceArray = &particleForceResourceArray;
+		createInfo_write.ResourceArray = &particleForceResourceArray_write;
 		frames[Read].force.Buffer = RHICreateStructuredBuffer(sizeof(ParticleForce), sizeof(ParticleForce) * maxBoids, BUF_UnorderedAccess | BUF_ShaderResource, createInfo_read);
 		frames[Read].force.BufferUAV = RHICreateUnorderedAccessView(frames[Read].force.Buffer, false, false);
 
@@ -103,52 +98,33 @@ void UComputeShaderTestComponent::BeginPlay()
 		frames[Write].force.BufferUAV = RHICreateUnorderedAccessView(frames[Write].force.Buffer, false, false);
 	}
 	{
+		TResourceArray<ParticleDensity> particleDensityResourceArray_write = particleDensityResourceArray;
 		FRHIResourceCreateInfo createInfo_read;
 		createInfo_read.ResourceArray = &particleDensityResourceArray;
 		FRHIResourceCreateInfo createInfo_write;
-		createInfo_write.ResourceArray = &particleDensityResourceArray;
+		createInfo_write.ResourceArray = &particleDensityResourceArray_write;
 		frames[Read].density.Buffer = RHICreateStructuredBuffer(sizeof(ParticleDensity), sizeof(ParticleDensity) * maxBoids, BUF_UnorderedAccess | BUF_ShaderResource, createInfo_read);
 		frames[Read].density.BufferUAV = RHICreateUnorderedAccessView(frames[Read].density.Buffer, false, false);
 		frames[Write].density.Buffer = RHICreateStructuredBuffer(sizeof(ParticleDensity), sizeof(ParticleDensity) * maxBoids, BUF_UnorderedAccess | BUF_ShaderResource, createInfo_write);
 		frames[Write].density.BufferUAV = RHICreateUnorderedAccessView(frames[Write].density.Buffer, false, false);
 	}
 	{
-		FRHIResourceCreateInfo createInfo_read;
-		createInfo_read.ResourceArray = &dt;
-		FRHIResourceCreateInfo createInfo_write;
-		createInfo_write.ResourceArray = &dt;
-		frames[Read].dt.Buffer = RHICreateStructuredBuffer(sizeof(float), sizeof(float), BUF_UnorderedAccess | BUF_ShaderResource, createInfo_read);
-		frames[Read].dt.BufferUAV = RHICreateUnorderedAccessView(frames[Read].dt.Buffer, false, false);
-
-		frames[Write].dt.Buffer = RHICreateStructuredBuffer(sizeof(float), sizeof(float) , BUF_UnorderedAccess | BUF_ShaderResource, createInfo_write);
-		frames[Write].dt.BufferUAV = RHICreateUnorderedAccessView(frames[Write].dt.Buffer, false, false);
-
-		FRHIResourceCreateInfo createInfo_cvf;
-		createInfo_cvf.ResourceArray = &cvf_max;
-		cvf_buffer.Buffer = RHICreateStructuredBuffer(sizeof(FVector), sizeof(FVector), BUF_UnorderedAccess | BUF_ShaderResource, createInfo_cvf);
-		cvf_buffer.BufferUAV = RHICreateUnorderedAccessView(cvf_buffer.Buffer, false, false);
-
-		FRHIResourceCreateInfo createInfo_mutex;
-		createInfo_cvf.ResourceArray = &mutex;
-		mutex_buffer.Buffer = RHICreateStructuredBuffer(sizeof(uint32), sizeof(uint32), BUF_UnorderedAccess | BUF_ShaderResource, createInfo_mutex);
-		mutex_buffer.BufferUAV = RHICreateUnorderedAccessView(mutex_buffer.Buffer, false, false);
-
-	}
-	{
+		TResourceArray<int> grid_write = grid;
 		FRHIResourceCreateInfo createInfo_read;
 		createInfo_read.ResourceArray = &grid;
 		FRHIResourceCreateInfo createInfo_write;
-		createInfo_write.ResourceArray = &grid;
+		createInfo_write.ResourceArray = &grid_write;
 		frames[Read].grid_tracker.Buffer = RHICreateStructuredBuffer(sizeof(int), sizeof(int) * grid_size, BUF_UnorderedAccess | BUF_ShaderResource, createInfo_read);
 		frames[Read].grid_tracker.BufferUAV = RHICreateUnorderedAccessView(frames[Read].grid_tracker.Buffer, false, false);
 		frames[Write].grid_tracker.Buffer = RHICreateStructuredBuffer(sizeof(int), sizeof(int) * grid_size, BUF_UnorderedAccess | BUF_ShaderResource, createInfo_write);
 		frames[Write].grid_tracker.BufferUAV = RHICreateUnorderedAccessView(frames[Write].grid_tracker.Buffer, false, false);
 	}
 	{
+		TResourceArray<int> grid_cells_write = grid_cells;
 		FRHIResourceCreateInfo createInfo_read;
 		createInfo_read.ResourceArray = &grid_cells;
 		FRHIResourceCreateInfo createInfo_write;
-		createInfo_write.ResourceArray = &grid_cells;
+		createInfo_write.ResourceArray = &grid_cells_write;
 		frames[Read].grid_cells.Buffer = RHICreateStructuredBuffer(sizeof(int), sizeof(int) * grid_size * maxParticlesPerCell, BUF_UnorderedAccess | BUF_ShaderResource, createInfo_read);
 		frames[Read].grid_cells.BufferUAV = RHICreateUnorderedAccessView(frames[Read].grid_cells.Buffer, false, false);
 		frames[Write].grid_cells.Buffer = RHICreateStructuredBuffer(sizeof(int), sizeof(int) * grid_size * maxParticlesPerCell, BUF_UnorderedAccess | BUF_ShaderResource, createInfo_write);
@@ -161,7 +137,7 @@ void UComputeShaderTestComponent::BeginPlay()
 		p.position = FVector::ZeroVector;
 		p.velocity = FVector::ZeroVector;
 		outputParticles.Init(p , maxBoids);
-		memcpy(outputParticles.GetData(), particleResourceArray.GetData(), maxBoids * sizeof(Particle));
+		//memcpy(outputParticles.GetData(), particleResourceArray.GetData(), maxBoids * sizeof(Particle));
 	}
 }
 static FIntVector groupSize(int numElements)
@@ -314,43 +290,7 @@ void UComputeShaderTestComponent::TickComponent(float DeltaTime, ELevelTick Tick
 				current.force.BufferUAV
 			);
 		}
-		
-		//dt
-		float dt = step;
-		if(false){
-			TShaderMapRef<FComputeDtDeclaration> cs(GetGlobalShaderMap(ERHIFeatureLevel::SM5));
-			FRHIComputeShader* rhiComputeShader = cs.GetComputeShader();
-			FComputeDtDeclaration::FParameters params;
-			params.particles_read = current.paricle.BufferUAV;
-			params.particlesForce_read = current.force.BufferUAV;
-			params.particlesDensity_read = current.density.BufferUAV;
-			params.cvf_max = cvf_buffer.BufferUAV;
-			params.numParticles = numBoids;
-			params.mutex = mutex_buffer.BufferUAV;
-			params.pressureCoef = pressure_coef;
-			params.restDensity = rest_density;
-			RHICommands.SetComputeShader(rhiComputeShader);
-			FComputeShaderUtils::Dispatch(RHICommands,
-				cs,
-				params,
-				groupSize(numBoids));
-			RHICommands.TransitionResource(
-				EResourceTransitionAccess::ERWBarrier,
-				EResourceTransitionPipeline::EGfxToCompute,
-				cvf_buffer.BufferUAV
-			);
-			FVector cvf_value = { 0,0,0 };
-			{
-				uint8* particledata = (uint8*)RHILockStructuredBuffer(cvf_buffer.Buffer, 0, sizeof(FVector), RLM_ReadOnly);
-				FMemory::Memcpy(&cvf_value, particledata, sizeof(FVector));
-				RHIUnlockStructuredBuffer(cvf_buffer.Buffer);
-			}
-			float c_max = sqrt(cvf_value.X);
-			float v_max = sqrt(cvf_value.Y);
-			float f_max = sqrt(cvf_value.Z);
-			
-			dt = std::max(std::max(1.0f * effective_radious / v_max, sqrtf(effective_radious / f_max)), (1.0f * effective_radious) / c_max);
-		}
+
 		{
 			//SCOPED_GPU_STAT(RHICommands, Stat_GPU_UComputeShaderTestComponent_Integrate)
 			FComputeShaderDeclaration::FParameters params_integrate;

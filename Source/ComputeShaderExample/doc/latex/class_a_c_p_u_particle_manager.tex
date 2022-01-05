@@ -1,0 +1,100 @@
+\hypertarget{class_a_c_p_u_particle_manager}{}\doxysection{ACPUParticle\+Manager Class Reference}
+\label{class_a_c_p_u_particle_manager}\index{ACPUParticleManager@{ACPUParticleManager}}
+Inheritance diagram for ACPUParticle\+Manager\+:\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[height=2.000000cm]{class_a_c_p_u_particle_manager}
+\end{center}
+\end{figure}
+\doxysubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+virtual void \mbox{\hyperlink{class_a_c_p_u_particle_manager_a3d5b65ae03fa56b58b85c8680e631477}{Tick}} (float Delta\+Time) override
+\begin{DoxyCompactList}\small\item\em Called every frame. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{class_a_c_p_u_particle_manager_a219085cd45b2a5f9ef0dd90c073feebf}\label{class_a_c_p_u_particle_manager_a219085cd45b2a5f9ef0dd90c073feebf}} 
+int {\bfseries num\+Boids} = 1024
+\item 
+\mbox{\Hypertarget{class_a_c_p_u_particle_manager_aa94994885eebe2c494e2bf0253efcc5d}\label{class_a_c_p_u_particle_manager_aa94994885eebe2c494e2bf0253efcc5d}} 
+float {\bfseries time\+Step} = 0.\+0003f
+\item 
+\mbox{\Hypertarget{class_a_c_p_u_particle_manager_a88bc00a6cec4f3340feb86db51cc0407}\label{class_a_c_p_u_particle_manager_a88bc00a6cec4f3340feb86db51cc0407}} 
+float {\bfseries mass} = 1
+\item 
+\mbox{\Hypertarget{class_a_c_p_u_particle_manager_a54fa0f99875c8a22b7d377ec8cd13dd0}\label{class_a_c_p_u_particle_manager_a54fa0f99875c8a22b7d377ec8cd13dd0}} 
+FVector {\bfseries gravity} = \{ 0.f, 0.f, -\/9.\+81f \}
+\item 
+\mbox{\Hypertarget{class_a_c_p_u_particle_manager_a127da64fe7ba9c3e726244602e3604bb}\label{class_a_c_p_u_particle_manager_a127da64fe7ba9c3e726244602e3604bb}} 
+float {\bfseries damping} = -\/0.\+37f
+\item 
+\mbox{\Hypertarget{class_a_c_p_u_particle_manager_a0dff378c23c23e1efc8dff6756e18ceb}\label{class_a_c_p_u_particle_manager_a0dff378c23c23e1efc8dff6756e18ceb}} 
+float {\bfseries effective\+\_\+radious} = 1
+\item 
+\mbox{\Hypertarget{class_a_c_p_u_particle_manager_afe489d7d48b503514dd45ac8e148ded8}\label{class_a_c_p_u_particle_manager_afe489d7d48b503514dd45ac8e148ded8}} 
+float {\bfseries viscosity} = 250
+\item 
+\mbox{\Hypertarget{class_a_c_p_u_particle_manager_a6ad932c68689382fee1ffb707cc144a0}\label{class_a_c_p_u_particle_manager_a6ad932c68689382fee1ffb707cc144a0}} 
+float {\bfseries pressure\+\_\+coef} = 2000
+\item 
+\mbox{\Hypertarget{class_a_c_p_u_particle_manager_a3b2ebdb968bcba5dcd4e9c0774eb9954}\label{class_a_c_p_u_particle_manager_a3b2ebdb968bcba5dcd4e9c0774eb9954}} 
+float {\bfseries rest\+\_\+density} = 1000.f
+\item 
+\mbox{\Hypertarget{class_a_c_p_u_particle_manager_a5a623d878955155541aa655311bb23cd}\label{class_a_c_p_u_particle_manager_a5a623d878955155541aa655311bb23cd}} 
+FVector {\bfseries start\+Velocity} = \{ 0,0,0 \}
+\item 
+\mbox{\Hypertarget{class_a_c_p_u_particle_manager_a92e4b57dd1cd4d986148ea7f44dbe42b}\label{class_a_c_p_u_particle_manager_a92e4b57dd1cd4d986148ea7f44dbe42b}} 
+int {\bfseries max\+Particles\+Per\+Cell} = 500
+\item 
+\mbox{\Hypertarget{class_a_c_p_u_particle_manager_ae820fc67b185c01df013251aba107b9d}\label{class_a_c_p_u_particle_manager_ae820fc67b185c01df013251aba107b9d}} 
+float {\bfseries render\+Scale} = 1.\+0f
+\item 
+\mbox{\Hypertarget{class_a_c_p_u_particle_manager_a431f1b4f4cb2c0c40ab46890ed667df4}\label{class_a_c_p_u_particle_manager_a431f1b4f4cb2c0c40ab46890ed667df4}} 
+TArray$<$ FTransform $>$ {\bfseries \+\_\+instance\+Transforms}
+\item 
+\mbox{\Hypertarget{class_a_c_p_u_particle_manager_a7f6b6c64f2e37170e63e58d6aa6136ca}\label{class_a_c_p_u_particle_manager_a7f6b6c64f2e37170e63e58d6aa6136ca}} 
+TArray$<$ \mbox{\hyperlink{struct_particle}{Particle}} $>$ {\bfseries particles}
+\item 
+\mbox{\Hypertarget{class_a_c_p_u_particle_manager_a4666ba029cbc539fa471bc7df4174e13}\label{class_a_c_p_u_particle_manager_a4666ba029cbc539fa471bc7df4174e13}} 
+TArray$<$ \mbox{\hyperlink{struct_particle_force}{Particle\+Force}} $>$ {\bfseries forces}
+\item 
+\mbox{\Hypertarget{class_a_c_p_u_particle_manager_a40b16e3d21f2ebddcfc9ccd0f1ae18d8}\label{class_a_c_p_u_particle_manager_a40b16e3d21f2ebddcfc9ccd0f1ae18d8}} 
+TArray$<$ \mbox{\hyperlink{struct_particle_density}{Particle\+Density}} $>$ {\bfseries densities}
+\item 
+\mbox{\Hypertarget{class_a_c_p_u_particle_manager_a94eed46b6aae58776bb5689c61f8309c}\label{class_a_c_p_u_particle_manager_a94eed46b6aae58776bb5689c61f8309c}} 
+TArray$<$ int $>$ {\bfseries Grid\+Tracker}
+\item 
+\mbox{\Hypertarget{class_a_c_p_u_particle_manager_a16b1c5cf07c3f0370e781a6e30ba9ddd}\label{class_a_c_p_u_particle_manager_a16b1c5cf07c3f0370e781a6e30ba9ddd}} 
+TArray$<$ int $>$ {\bfseries Grid\+Cells}
+\end{DoxyCompactItemize}
+\doxysubsection*{Protected Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{class_a_c_p_u_particle_manager_aedd8762b94d6a8703378be1d980112f7}\label{class_a_c_p_u_particle_manager_aedd8762b94d6a8703378be1d980112f7}} 
+virtual void {\bfseries Begin\+Play} () override
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Member Function Documentation}
+\mbox{\Hypertarget{class_a_c_p_u_particle_manager_a3d5b65ae03fa56b58b85c8680e631477}\label{class_a_c_p_u_particle_manager_a3d5b65ae03fa56b58b85c8680e631477}} 
+\index{ACPUParticleManager@{ACPUParticleManager}!Tick@{Tick}}
+\index{Tick@{Tick}!ACPUParticleManager@{ACPUParticleManager}}
+\doxysubsubsection{\texorpdfstring{Tick()}{Tick()}}
+{\footnotesize\ttfamily void ACPUParticle\+Manager\+::\+Tick (\begin{DoxyParamCaption}\item[{float}]{Delta\+Time }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [override]}, {\ttfamily [virtual]}}
+
+
+
+Called every frame. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em Delta\+Time} & time between frames \\
+\hline
+\end{DoxyParams}
+
+
+The documentation for this class was generated from the following files\+:\begin{DoxyCompactItemize}
+\item 
+CPUParticle\+Manager.\+h\item 
+CPUParticle\+Manager.\+cpp\end{DoxyCompactItemize}
