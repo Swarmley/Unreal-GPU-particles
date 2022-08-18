@@ -13,7 +13,6 @@ struct Particle{
 //--------------------------------------------------------------------------------------
 
 RWStructuredBuffer<Particle> particles_read;
-RWStructuredBuffer<Particle> particles_write;
 
 RWStructuredBuffer<int> grid;
 RWStructuredBuffer<int> grid_cells;
@@ -22,20 +21,8 @@ RWStructuredBuffer<int> grid_cells;
 float radious;
 int numParticles;
 float3 minBoundary;
-float3 maxBoundary;
 uint   maxParticlesPerCell;
-uint   grid_size;
 int3   gridDimensions;
-
-
-[numthreads(THREADGROUPSIZE_X, THREADGROUPSIZE_Y, THREADGROUPSIZE_Z)]
-void ClearGrid(uint3 ThreadId : SV_DispatchThreadID)
-{
-   if(ThreadId.x >= grid_size)
-        return;
-    // just set the cell array size back to 0;
-    grid[ThreadId.x] = 0;
-}
 
 [numthreads(THREADGROUPSIZE_X, THREADGROUPSIZE_Y, THREADGROUPSIZE_Z)]
 void CreateGrid(uint3 ThreadId : SV_DispatchThreadID)

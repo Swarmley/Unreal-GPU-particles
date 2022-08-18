@@ -1,0 +1,28 @@
+#include "/Engine/Private/Common.ush"
+
+//--------------------------------------------------------------------------------------
+// Structs
+//--------------------------------------------------------------------------------------
+struct Particle{
+    float3 position;
+    float3 velocity;
+};
+//--------------------------------------------------------------------------------------
+// Buffers
+//--------------------------------------------------------------------------------------
+RWStructuredBuffer<Particle> particles_write;
+int numParticles;
+
+[numthreads(THREADGROUPSIZE_X, THREADGROUPSIZE_Y, THREADGROUPSIZE_Z)]
+void ClearParticleBuffer(uint3 Gid : SV_GroupID, //atm: -, 0...256, - in rows (Y)        --> current group index (dispatched by c++)
+                       uint3 ThreadId : SV_DispatchThreadID, //atm: 0...256 in rows & columns (XY)   --> "global" thread id
+                       uint3 GTid : SV_GroupThreadID, //atm: 0...256, -,- in columns (X)      --> current threadId in group / "local" threadId
+                       uint GI : SV_GroupIndex)            //atm: 0...256 in columns (X)           --> "flattened" index of a thread within a group))
+{
+    
+    int index = ThreadId.x;
+    if(index >= numParticles)
+        return;
+    particles_write[index].velocity = float3(0.0f,0.0f,0.0f);
+    particles_write[index].position = float3(0.0f,0.0f,0.0f);
+}

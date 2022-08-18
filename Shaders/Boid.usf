@@ -56,7 +56,7 @@ void MainComputeShader(uint3 Gid : SV_GroupID, //atm: -, 0...256, - in rows (Y) 
     float3 acceleration = float3(0,0,0);
     acceleration +=  force;
 
-    velocity += acceleration * delta_time;
+    velocity += acceleration * delta_time / mass;
     position += velocity * delta_time;
     
     

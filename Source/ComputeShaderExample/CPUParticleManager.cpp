@@ -175,7 +175,7 @@ void ACPUParticleManager::computeForces()
 					if (!isInGrid(cell, grid_dimensions))
 						continue;
 					int cellId = GetCellId(cell, grid_dimensions);
-					const int size = std::min(GridTracker[cellId], maxParticlesPerCell);
+					const int size = FMath::Min(GridTracker[cellId], maxParticlesPerCell);
 					for (int l = 0; l < size; l++) {
 						int idx = GridCells[cellId * maxParticlesPerCell + l];
 						if (idx == index)
@@ -217,7 +217,7 @@ void ACPUParticleManager::computeDensity()
 					if (!isInGrid(cell, grid_dimensions))
 						continue;
 					int cellId = GetCellId(cell, grid_dimensions);
-					const int size = std::min(GridTracker[cellId], maxParticlesPerCell);
+					const int size = FMath::Min(GridTracker[cellId], maxParticlesPerCell);
 					for (int l = 0; l < size; l++) {
 						int idx = GridCells[cellId * maxParticlesPerCell + l];
 						FVector other = particles[idx].position;

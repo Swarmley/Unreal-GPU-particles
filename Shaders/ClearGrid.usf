@@ -1,0 +1,18 @@
+#include "/Engine/Private/Common.ush"
+#include "GridHelpers.usf"
+//--------------------------------------------------------------------------------------
+// Buffers
+//--------------------------------------------------------------------------------------
+
+RWStructuredBuffer<int> grid;
+uint   grid_size;
+
+
+[numthreads(THREADGROUPSIZE_X, THREADGROUPSIZE_Y, THREADGROUPSIZE_Z)]
+void ClearGrid(uint3 ThreadId : SV_DispatchThreadID)
+{
+   if(ThreadId.x >= grid_size)
+        return;
+    // just set the cell array size back to 0;
+    grid[ThreadId.x] = 0;
+}
